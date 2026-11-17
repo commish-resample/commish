@@ -342,11 +342,21 @@
   var DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
   // ---------- views ----------
+  function mergeNote(g) {
+    if (g.length < 2) return '';
+    var m = merge(g), total = g.reduce(function (t, f) { return t + f.rows.length; }, 0);
+    var tick = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    var line = m.dupes
+      ? num(m.dupes) + ' duplicate order' + (m.dupes === 1 ? '' : 's') + ' removed across your ' + g.length + ' exports. ' + num(m.rows.length) + ' unique orders, each counted once.'
+      : 'No overlap between your ' + g.length + ' exports. ' + num(m.rows.length) + ' unique orders, each counted once.';
+    if (S.plan !== 'pro') line += ' Free shows your most recent export; Pro merges them all.';
+    return '<div class="alert t a-pop" style="display:flex;gap:10px;align-items:flex-start;margin-top:4px">' + tick + '<span>' + line + '</span></div>';
+  }
   function viewUpload() {
     var g = goodFiles();
     var files = S.files.length ? '<div class="files a-in">' + S.files.map(function (f) {
       return '<div class="file t' + (f.error ? ' err' : '') + '"><b>' + esc(f.name) + '</b><span>' + (f.error ? esc(f.error) : num(f.rows.length) + ' orders, ' + fmtDs(f.min) + ' to ' + fmtDs(f.max)) + '</span></div>';
-    }).join('') + '</div>' : '';
+    }).join('') + '</div>' + mergeNote(g) : '';
     return '<section class="a-in"><h1>Let\'s find your commish</h1><p class="sub" style="font-size:17px;max-width:560px">Upload your TikTok affiliate orders export and see what you\'ve earned, what\'s still owed and what\'s working.</p></section>' +
       '<div class="grid2">' +
       '<div class="card t a-in" style="display:flex;gap:14px;animation-delay:100ms"><button class="video t" data-action="video" aria-label="Play the how-to video"><span class="a-pop" style="width:54px;height:54px;border-radius:50%;background:var(--pop);border:2.5px solid var(--chipInk);display:flex;align-items:center;justify-content:center;color:var(--ink);animation-delay:500ms"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg></span>How-to video coming soon</button>' +
