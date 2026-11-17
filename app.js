@@ -670,6 +670,7 @@
   });
   $('#themeBtn').setAttribute('aria-pressed', document.documentElement.dataset.theme === 'dark');
   window.addEventListener('hashchange', function () {
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest('nav')) document.activeElement.blur();
     var r = route();
     if (r !== 'upload' && dashShown && SECTIONS.indexOf(r) >= 0) { goSection(r, true); return; }
     render(); window.scrollTo(0, 0);

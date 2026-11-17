@@ -194,3 +194,6 @@ h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1
   .dsec{gap:22px;scroll-margin-top:96px}
   .dsec+.dsec{margin-top:44px;padding-top:44px}
 }
+a,button{-webkit-tap-highlight-color:transparent}
+.bottomnav a:focus,.topnav a:focus{outline:none}
+.bottomnav a:focus-visible,.topnav a:focus-visible{outline:3px solid var(--navOn);outline-offset:2px;border-radius:14px}
