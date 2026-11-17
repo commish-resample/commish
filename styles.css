@@ -186,3 +186,11 @@ h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1
 @media (min-width:900px){.ym em{font-size:12px}}
 .topline{margin:2px 0 0;font-size:13px;font-weight:500;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .grid2>*{min-width:0}.list-row{min-width:0}
+.dsec{display:flex;flex-direction:column;gap:16px;scroll-margin-top:14px}
+.dsec+.dsec{margin-top:34px;padding-top:34px;border-top:2.5px dashed var(--line)}
+.pending *{animation-play-state:paused!important}
+@media (min-width:900px){
+  .top{position:sticky;top:0;z-index:30;background:var(--bg);transition:background-color .5s ease}
+  .dsec{gap:22px;scroll-margin-top:96px}
+  .dsec+.dsec{margin-top:44px;padding-top:44px}
+}

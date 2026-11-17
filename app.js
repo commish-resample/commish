@@ -478,7 +478,7 @@
 
   function viewShops(A) {
     if (S.plan !== 'pro') return '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish in this export.</p></section>' +
-      locked('<h2>All shops</h2>' + A.shops.slice(0, 6).map(function (s) { return '<div class="list-row"><b>' + esc(s.name) + '</b> ' + gbp(s.earned) + '</div>'; }).join(''), 'Which shops lose your orders', 'Lost rates, UK vs overseas sellers and new shops') + nudge(A);
+      locked('<h2>All shops</h2>' + A.shops.slice(0, 6).map(function (s) { return '<div class="list-row"><b>' + esc(s.name) + '</b> ' + gbp(s.earned) + '</div>'; }).join(''), 'Which shops lose your orders', 'Lost rates, UK vs overseas sellers and new shops');
     var list = A.shops.slice().sort(function (a, b) { return S.shopSort === 'lost' ? b.lostRate - a.lostRate || b.n - a.n : b.earned - a.earned; }).slice(0, 25);
     var out = '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish' + (A.newShops.length ? '. ' + A.newShops.length + ' are new this month.' : '.') + '</p></section>';
     out += '<div class="seg t a-in" role="group" aria-label="Sort shops by" style="max-width:420px"><button data-action="sort" data-v="earned" aria-pressed="' + (S.shopSort !== 'lost') + '">Most earned</button><button data-action="sort" data-v="lost" aria-pressed="' + (S.shopSort === 'lost') + '">Most lost</button></div>';
@@ -498,9 +498,9 @@
 
   function viewVideos(A) {
     if (S.plan !== 'pro') return '<section class="a-in"><h1>Your videos</h1><p class="sub">' + A.nContent + ' videos and Lives earned you commish in this export.</p></section>' +
-      locked('<h2>When your top earners went up</h2><div style="height:180px"></div>', Math.round(A.evergreen) + '% came from older videos', 'Evergreen videos, posting times and Lives') + nudge(A);
+      locked('<h2>When your top earners went up</h2><div style="height:180px"></div>', Math.round(A.evergreen) + '% came from older videos', 'Evergreen videos, posting times and Lives');
     var cols = ['#FF6FB5', '#FFFFFF', '#FFE45C', '#3DDC97', '#B9A6FF', '#0B0716'];
-    var out = '<section class="a-in"><h1>Your videos</h1><p class="sub">' + A.nVideos + ' videos and ' + A.lives.length + ' top Lives earned you commish.</p></section><div class="grid2">';
+    var out = '<section class="a-in"><h1>Your videos</h1><p class="sub">' + A.nVideos + ' videos and ' + A.nLives + ' Lives earned you commish.</p></section><div class="grid2">';
     out += '<div class="card dark t a-in" style="animation-delay:80ms"><p style="margin:0;font-size:64px;font-weight:800;letter-spacing:-.05em;line-height:.95">' + count(A.evergreen, 'pct') + '</p><p style="margin:6px 0 14px;font-size:17px;font-weight:600;line-height:1.35">of your commish came from videos more than a month old. Your back catalogue is still paying you.</p>' +
       '<div style="display:flex;height:28px;gap:3px">' + A.ages.map(function (a, i) { return a.pct > 0.4 ? '<span class="a-barx" style="flex:' + a.pct + ' 1 0;min-width:6px;border-radius:7px;border:2px solid var(--chipInk);background:' + cols[i] + ';animation-delay:' + (300 + i * 110) + 'ms"></span>' : ''; }).join('') + '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px;margin-top:12px;font-size:13px">' + A.ages.map(function (a, i) { return '<span style="display:flex;gap:6px;align-items:center"><span style="width:12px;height:12px;border-radius:4px;border:2px solid var(--chipInk);background:' + cols[i] + '"></span>' + a.label + ' ' + Math.round(a.pct) + '%</span>'; }).join('') + '</div></div>';
@@ -519,7 +519,7 @@
 
   function viewTax(A) {
     if (S.plan !== 'pro') return '<section class="a-in"><h1>Tax year</h1><p class="sub">Your paid commish, 6 April to 5 April, ready for Self Assessment.</p></section>' +
-      locked('<div class="slot"></div><div class="receipt" style="height:260px"></div>', 'Your tax year, sorted', 'Totals by UK tax year, ready for your accountant') + nudge(A);
+      locked('<div class="slot"></div><div class="receipt" style="height:260px"></div>', 'Your tax year, sorted', 'Totals by UK tax year, ready for your accountant');
     if (!A.taxYears.length) return '<section class="a-in"><h1>Tax year</h1><p class="sub">No settled orders yet, so nothing to total up.</p></section>';
     var yr = S.taxYear != null ? S.taxYear : A.taxYears[0].y;
     var T = A.taxYears.find(function (t) { return t.y === yr; }) || A.taxYears[0];
@@ -564,17 +564,52 @@
     d.querySelector('[data-l1]').textContent = btn.dataset.l1;
     d.querySelector('[data-l2]').textContent = btn.dataset.l2;
   }
+  var SECTIONS = ['home', 'shops', 'videos', 'tax'];
+  var dashShown = false, spyLock = 0;
   function render(quiet) {
+    var keepY = quiet ? window.scrollY : 0;
     document.documentElement.classList.toggle('quiet', !!quiet);
-    var r = route(), A = r === 'upload' ? null : data();
-    var html = r === 'upload' ? viewUpload() : r === 'reveal' ? viewReveal(A) : r === 'home' ? viewHome(A) : r === 'shops' ? viewShops(A) : r === 'videos' ? viewVideos(A) : viewTax(A);
+    var r = route(), html;
+    if (r === 'upload') { html = viewUpload(); dashShown = false; }
+    else {
+      var A = data();
+      var parts = { home: viewHome(A), shops: viewShops(A), videos: viewVideos(A), tax: viewTax(A) };
+      html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
+      dashShown = true;
+    }
     $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.</p>';
-    navs(r);
+    navs(r === 'reveal' ? 'home' : r);
     bindDrop();
-    countUp(quiet);
+    if (r === 'upload') { countUp(document, quiet); return; }
+    var first = $('#sec-home'); if (first) countUp(first, quiet);
+    if (quiet) { document.querySelectorAll('.dsec').forEach(function (x) { x.classList.remove('pending'); }); window.scrollTo(0, keepY); }
+    reveal();
   }
-  function countUp(quiet) {
-    var els = document.querySelectorAll('[data-count]');
+  function goSection(k, smooth) {
+    var el = $('#sec-' + k); if (!el) return;
+    spyLock = Date.now() + 900;
+    navs(k);
+    if (k === 'home') window.scrollTo({ top: 0, behavior: smooth && !reduceMotion ? 'smooth' : 'auto' });
+    else el.scrollIntoView({ behavior: smooth && !reduceMotion ? 'smooth' : 'auto', block: 'start' });
+  }
+  function reveal() {
+    document.querySelectorAll('.dsec.pending').forEach(function (sec) {
+      if (sec.getBoundingClientRect().top < window.innerHeight * 0.85) { sec.classList.remove('pending'); countUp(sec, false); }
+    });
+  }
+  function spy() {
+    if (!dashShown) return;
+    reveal();
+    if (Date.now() < spyLock) return;
+    var cur = 'home';
+    document.querySelectorAll('.dsec').forEach(function (sec) { if (sec.getBoundingClientRect().top < window.innerHeight * 0.35) cur = sec.dataset.sec; });
+    if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight - 4) cur = SECTIONS[SECTIONS.length - 1];
+    if (location.hash !== '#' + cur) { try { history.replaceState(null, '', '#' + cur); } catch (e) {} navs(cur); }
+  }
+  var spyQueued = false;
+  window.addEventListener('scroll', function () { if (spyQueued) return; spyQueued = true; requestAnimationFrame(function () { spyQueued = false; spy(); }); }, { passive: true });
+  function countUp(root, quiet) {
+    var els = (root || document).querySelectorAll('[data-count]');
     els.forEach(function (el) {
       var target = parseFloat(el.dataset.count), fmt = el.dataset.fmt, delay = +el.dataset.delay || 0;
       var show = function (v) { el.textContent = fmtVal(v, fmt); };
@@ -634,7 +669,13 @@
     try { localStorage.setItem('commish-theme', dark ? 'dark' : 'light'); } catch (e) {}
   });
   $('#themeBtn').setAttribute('aria-pressed', document.documentElement.dataset.theme === 'dark');
-  window.addEventListener('hashchange', function () { render(); window.scrollTo(0, 0); });
+  window.addEventListener('hashchange', function () {
+    var r = route();
+    if (r !== 'upload' && dashShown && SECTIONS.indexOf(r) >= 0) { goSection(r, true); return; }
+    render(); window.scrollTo(0, 0);
+    if (SECTIONS.indexOf(r) > 0) setTimeout(function () { goSection(r, false); }, 30);
+  });
   window.__commish = { S: S, data: data, makeDemo: makeDemo };
   render();
+  (function () { var r = route(); if (SECTIONS.indexOf(r) > 0) setTimeout(function () { goSection(r, false); }, 30); })();
 })();
