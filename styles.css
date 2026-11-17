@@ -198,3 +198,10 @@ a,button{-webkit-tap-highlight-color:transparent}
 .bottomnav a:focus,.topnav a:focus{outline:none}
 .bottomnav a:focus-visible,.topnav a:focus-visible{outline:3px solid var(--navOn);outline-offset:2px;border-radius:14px}
 .bottomnav[hidden],.topnav[hidden]{display:none!important}
+.tipwrap{position:relative;flex:0 0 auto}
+.eye{width:44px;height:44px;border-radius:50%;border:2px solid var(--chipInk);background:transparent;color:var(--chipInk);display:flex;align-items:center;justify-content:center;padding:0}
+.tip{position:absolute;right:0;bottom:calc(100% + 12px);width:min(320px,80vw);background:var(--card);color:var(--ink);border:2.5px solid var(--line);border-radius:20px;padding:14px 16px;display:none;flex-direction:column;gap:8px;font-size:14px;font-weight:500;line-height:1.4;z-index:40;text-align:left}
+.tip b{font-size:16px;font-weight:800}
+.tip::after{content:"";position:absolute;right:14px;bottom:-9px;width:14px;height:14px;background:var(--card);border-right:2.5px solid var(--line);border-bottom:2.5px solid var(--line);transform:rotate(45deg)}
+.tipwrap:hover .tip,.tipwrap:focus-within .tip,.tipwrap.open .tip{display:flex;animation:pop .3s cubic-bezier(.34,1.6,.64,1) both;transform-origin:bottom right}
+.card.dark>svg{flex:0 0 auto}

@@ -348,6 +348,15 @@
   var DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
   // ---------- views ----------
+  function privacyTip() {
+    return '<span class="tipwrap"><button class="eye" data-action="tip" aria-expanded="false" aria-controls="privTip" aria-label="How your data stays private">' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
+      '<span class="tip" id="privTip" role="tooltip"><b>How your data stays private</b>' +
+      '<span>Your export is opened by your own browser, on this device. It is never sent to Commish or anyone else.</span>' +
+      '<span>Commish has no database and no file storage, so there is nowhere for your orders to go.</span>' +
+      '<span>Refresh or close the page and your orders are gone from the screen.</span>' +
+      '<span>Want proof? Open Commish, switch on aeroplane mode, then add your export. It still works, because nothing is sent over the internet.</span></span></span>';
+  }
   function mergeNote(g) {
     if (g.length < 2) return '';
     var m = merge(g), total = g.reduce(function (t, f) { return t + f.rows.length; }, 0);
@@ -369,7 +378,7 @@
       '<div class="steps"><p style="margin:0;font-size:19px;font-weight:800">Export in 3 taps</p><div class="step"><i class="t">1</i><span>Open your affiliate earnings in TikTok</span></div><div class="step"><i class="t">2</i><span>Tap download on your orders</span></div><div class="step"><i class="t">3</i><span>Pick up to 90 days and export</span></div></div></div>' +
       '<div style="display:flex;flex-direction:column;gap:14px"><div class="drop t a-in" id="drop" style="animation-delay:180ms"><span class="a-bob" aria-hidden="true" style="display:block;position:relative;width:74px;height:88px"><svg width="74" height="88" viewBox="0 0 74 88"><path d="M8 4h40l18 18v58a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4z" style="fill:var(--tint);stroke:var(--line)" stroke-width="3" stroke-linejoin="round"/><path d="M48 4v18h18" fill="none" style="stroke:var(--line)" stroke-width="3" stroke-linejoin="round"/><path d="M16 44h34M16 54h34M16 64h22" style="stroke:var(--line)" stroke-width="3" stroke-linecap="round"/></svg><span style="position:absolute;right:-10px;bottom:-6px;width:32px;height:32px;border-radius:50%;background:var(--pop);border:2.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800">£</span></span>' +
       '<button class="btn t" data-action="choose">Choose my export' + (g.length ? 's' : '') + '</button><p class="sub" style="margin:0">.xlsx or .csv. Add a few at once to cover a whole year.</p></div>' +
-      '<div class="card dark t" style="display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:22px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span style="font-size:15px;font-weight:600;line-height:1.35">Your file is read on this device and never uploaded anywhere.</span></div>' +
+      '<div class="card dark t" style="display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:22px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span style="font-size:15px;font-weight:600;line-height:1.35;flex:1 1 auto">Your file is read on this device and never uploaded anywhere.</span>' + privacyTip() + '</div>' +
       files +
       (g.length ? '<a class="btn" href="#home">See my commish</a><button class="linkish" data-action="clear">Remove all files</button>' : '<button class="linkish" data-action="demo" style="align-self:center">No export yet? Try it with demo data</button>') +
       '</div></div>';
@@ -653,6 +662,7 @@
     else if (a === 'sort') { S.shopSort = b.dataset.v; render(true); }
     else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(true); }
     else if (a === 'unlock') { setPlan('pro'); toast("Payments aren't switched on yet, so here's a free Pro preview."); }
+    else if (a === 'tip') { var w = b.parentNode, open = !w.classList.contains('open'); w.classList.toggle('open', open); b.setAttribute('aria-expanded', open); }
     else if (a === 'video') toast('Your how-to video will go here.');
     else if (a === 'print') window.print();
     else if (a === 'copytax') {
