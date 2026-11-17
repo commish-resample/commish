@@ -549,6 +549,9 @@
   function route() { var h = (location.hash || '').replace('#', ''); if (ROUTES.indexOf(h) < 0) h = goodFiles().length ? 'home' : 'upload'; if (h !== 'upload' && !goodFiles().length) h = 'upload'; return h; }
   function navs(cur) {
     var items = [['home', 'Home', 'home'], ['shops', 'Shops', 'shops'], ['videos', 'Videos', 'videos'], ['tax', 'Tax', 'tax'], ['upload', 'Files', 'upload']];
+    var hasData = goodFiles().length > 0;
+    $('#bottomnav').hidden = !hasData; $('#topnav').hidden = !hasData;
+    if (!hasData) items = [];
     $('#bottomnav').innerHTML = items.map(function (x) { return '<a href="#' + x[0] + '"' + (cur === x[0] ? ' aria-current="page"' : '') + '>' + svg(x[2]) + x[1] + '</a>'; }).join('');
     $('#topnav').innerHTML = items.map(function (x) { return '<a class="t" href="#' + x[0] + '"' + (cur === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }).join('');
     $('#planLabel').textContent = S.plan === 'pro' ? 'Pro preview' : 'Free';
