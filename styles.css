@@ -184,3 +184,5 @@ h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1
 .ym b{position:absolute;bottom:-20px;font-size:11px;font-weight:600}
 .yearmap+.tiles{margin-top:30px!important}
 @media (min-width:900px){.ym em{font-size:12px}}
+.topline{margin:2px 0 0;font-size:13px;font-weight:500;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid2>*{min-width:0}.list-row{min-width:0}
