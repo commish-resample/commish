@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commish: your TikTok Shop commission, made clear</title>
+<meta name="description" content="Upload your TikTok Shop affiliate orders export and see what you've been paid, what's still owed and what's working. Your file never leaves your device.">
+<meta name="theme-color" content="#FFE45C">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem('commish-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="#home" aria-label="Commish home"><span>C</span><span class="coin a-coin t">£</span><span>mmish</span></a>
+  <div class="tools">
+    <nav class="topnav" aria-label="Main" id="topnav"></nav>
+    <button class="plan t" id="planBtn" aria-pressed="false" title="Testing only: switch between Free and Pro"><span class="dot"></span><span id="planLabel">Free</span></button>
+    <button class="switch t" id="themeBtn" aria-label="Dark mode" aria-pressed="false">
+      <span class="knob">
+        <svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFE45C" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#17112B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+      </span>
+    </button>
+  </div>
+</header>
+<main id="app" tabindex="-1"></main>
+<nav class="bottomnav t" id="bottomnav" aria-label="Main"></nav>
+<input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple hidden>
+<div id="toastHost" aria-live="polite"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
