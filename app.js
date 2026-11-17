@@ -372,7 +372,7 @@
     var pro = S.plan === 'pro';
     var out = '';
     if (pro) {
-      out += '<section class="conf-wrap a-in"><p class="kicker">You\'re still owed</p><p class="hero-num">' + count(A.owed) + '</p><p class="sub">From your pending orders. Most settle within about ' + A.lagMed + ' days.</p>' + conf(10, 150, 22) + '</section>';
+      out += '<section class="conf-wrap a-in"><p class="kicker">You\'re still owed</p><p class="hero-num">' + count(A.owed) + '</p><p class="sub">From your pending orders. Most settle within about ' + A.lagMed + ' days.</p>' + gmvLine(A) + conf(10, 150, 22) + '</section>';
       out += '<div class="tiles"><div class="tile ink t a-in" style="animation-delay:100ms"><p>Paid out</p><b>' + count(A.paid, 'gbp', 100) + '</b></div><div class="tile t a-in" style="animation-delay:160ms"><p>Lost to returns</p><b>' + count(A.lost, 'gbp', 160) + '</b></div><div class="tile pink t a-in" style="animation-delay:220ms"><p>On track this month</p><b>' + count(A.forecast, 'gbp', 220) + '</b></div><div class="tile t a-in" style="animation-delay:280ms"><p>Per order, on average</p><b>' + gbp2(A.perOrder) + '</b></div></div>';
       var sel = S.sel == null ? 11 : S.sel, m = A.months[sel];
       out += '<div class="card big t a-in" style="animation-delay:260ms"><div class="row-head"><h2>Your year</h2><span style="font-size:13px;font-weight:600">Tap a month</span></div>' +
@@ -395,8 +395,8 @@
         '<p class="sub" style="margin-top:10px">Payouts usually land on a ' + A.payday + '.</p></div>';
       out += '</div>';
     } else {
-      out += '<section class="a-in"><p class="kicker">You\'ve been paid</p><p class="hero-num">' + count(A.paid) + '</p><p class="sub">' + fmtDs(A.min) + ' to ' + fmtD(A.max) + ', from one export</p></section>';
-      out += '<div class="tiles"><div class="tile pink t a-in" style="animation-delay:100ms"><p>On its way</p><b>' + count(A.owed, 'gbp', 100) + '</b></div><div class="tile t a-in" style="animation-delay:160ms"><p>Lost to returns</p><b>' + count(A.lost, 'gbp', 160) + '</b></div><div class="tile t a-in" style="animation-delay:220ms"><p>Sales you drove</p><b>' + count(A.gmv, 'gbp', 220) + '</b></div><div class="tile ink t a-in" style="animation-delay:280ms"><p>Per order, on average</p><b>' + gbp2(A.perOrder) + '</b></div></div>';
+      out += '<section class="a-in"><p class="kicker">You\'ve been paid</p><p class="hero-num">' + count(A.paid) + '</p><p class="sub">' + fmtDs(A.min) + ' to ' + fmtD(A.max) + ', from one export</p>' + gmvLine(A) + '</section>';
+      out += '<div class="tiles"><div class="tile pink t a-in" style="animation-delay:100ms"><p>On its way</p><b>' + count(A.owed, 'gbp', 100) + '</b></div><div class="tile t a-in" style="animation-delay:160ms"><p>Lost to returns</p><b>' + count(A.lost, 'gbp', 160) + '</b></div><div class="tile t a-in" style="animation-delay:220ms"><p>Your real rate</p><b>' + A.effRate.toFixed(1) + '%</b></div><div class="tile ink t a-in" style="animation-delay:280ms"><p>Per order, on average</p><b>' + gbp2(A.perOrder) + '</b></div></div>';
       var wmax = Math.max.apply(null, A.weeks.map(function (w) { return w.paid + w.owed; })) || 1;
       out += '<div class="grid2"><div class="card big t a-in" style="animation-delay:300ms"><h2>Week by week</h2><div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>On its way</span></div><div class="plot" style="height:136px">' +
         A.weeks.map(function (w, i) { return '<button tabindex="-1" aria-hidden="true"><span class="stack a-bar" style="animation-delay:' + (350 + i * 50) + 'ms"><span class="s-owed" style="height:' + (w.owed / wmax * 130) + 'px"></span><span class="s-paid" style="height:' + (w.paid / wmax * 130) + 'px"></span></span></button>'; }).join('') +
@@ -415,6 +415,11 @@
     return out;
   }
   function data_all() { return goodFiles(); }
+  function gmvLine(A) {
+    return '<div class="t" style="display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin-top:12px;background:var(--card);border:2.5px solid var(--line);border-radius:18px;padding:8px 14px">' +
+      '<span style="font-size:14px;font-weight:600">Sales you drove (GMV)</span><b style="font-size:22px;letter-spacing:-.02em">' + count(A.gmv, 'gbp', 150) + '</b>' +
+      '<span style="font-size:14px;color:var(--ink2)">' + num(A.items) + ' items sold</span></div>';
+  }
 
   function viewShops(A) {
     if (S.plan !== 'pro') return '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish in this export.</p></section>' +
