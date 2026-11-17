@@ -352,7 +352,7 @@
       '<button class="btn t" data-action="choose">Choose my export' + (g.length ? 's' : '') + '</button><p class="sub" style="margin:0">.xlsx or .csv. Add a few at once to cover a whole year.</p></div>' +
       '<div class="card dark t" style="display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:22px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span style="font-size:15px;font-weight:600;line-height:1.35">Your file is read on this device and never uploaded anywhere.</span></div>' +
       files +
-      (g.length ? '<a class="btn" href="#reveal">See my commish</a><button class="linkish" data-action="clear">Remove all files</button>' : '<button class="linkish" data-action="demo" style="align-self:center">No export yet? Try it with demo data</button>') +
+      (g.length ? '<a class="btn" href="#home">See my commish</a><button class="linkish" data-action="clear">Remove all files</button>' : '<button class="linkish" data-action="demo" style="align-self:center">No export yet? Try it with demo data</button>') +
       '</div></div>';
   }
 
@@ -521,7 +521,7 @@
     S.files = S.files.filter(function (f) { return !f.demo; });
     Promise.all(arr.map(function (f) { return readFile(f).catch(function (e) { return { name: f.name, error: e.message, rows: [] }; }); })).then(function (res) {
       res.forEach(function (f) { S.files.push(f); });
-      if (goodFiles().length) { location.hash = '#reveal'; render(); } else render();
+      if (goodFiles().length) { location.hash = '#home'; render(); } else render();
     });
   }
   function bindDrop() {
@@ -536,7 +536,7 @@
     var b = e.target.closest('[data-action]'); if (!b) return;
     var a = b.dataset.action;
     if (a === 'choose') $('#fileInput').click();
-    else if (a === 'demo') { S.files = makeDemo(); location.hash = '#reveal'; render(); }
+    else if (a === 'demo') { S.files = makeDemo(); location.hash = '#home'; render(); }
     else if (a === 'clear') { S.files = []; render(); }
     else if (a === 'month') { S.sel = +b.dataset.i; render(); }
     else if (a === 'sort') { S.shopSort = b.dataset.v; render(); }
