@@ -11,6 +11,7 @@
   var DAY = 864e5;
   var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   var shortName = function (t) { t = String(t || ''); var c = t.split(/ [-–(]| \| |, /)[0]; if (c.length > 46) c = c.slice(0, 44).replace(/\s+\S*$/, '') + '…'; return c; };
+  var range = function (a, b) { return (a.getFullYear() === b.getFullYear() ? fmtDs(a) : fmtD(a)) + ' to ' + fmtD(b); };
   var fmtD = function (d) { return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
   var fmtDs = function (d) { return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -189,7 +190,8 @@
     var ok = rows.filter(function (r) { return r.status !== 'Ineligible'; });
     A.perOrder = ok.length ? sum(ok, earned) / ok.length : 0;
     var base = sum(ok, function (r) { return r.base; });
-    A.effRate = base ? sum(ok, earned) / base * 100 : 0;
+    var okGmv = sum(ok, function (r) { return r.gmv; });
+    A.effRate = okGmv ? sum(ok, earned) / okGmv * 100 : 0;
     var t = rows.map(function (r) { return +r.odate; });
     A.min = new Date(Math.min.apply(null, t)); A.max = new Date(Math.max.apply(null, t));
     A.days = Math.max(1, Math.round((A.max - A.min) / DAY) + 1);
@@ -295,7 +297,8 @@
   }
 
   // ---------- view helpers ----------
-  function count(v, fmt, delay) { return '<span data-count="' + v + '" data-fmt="' + (fmt || 'gbp') + '" data-delay="' + (delay || 0) + '">' + (fmt === 'pct' ? Math.round(v) + '%' : gbp(v)) + '</span>'; }
+  function count(v, fmt, delay) { return '<span data-count="' + v + '" data-fmt="' + (fmt || 'gbp') + '" data-delay="' + (delay || 0) + '">' + fmtVal(v, fmt) + '</span>'; }
+  function fmtVal(v, fmt) { return fmt === 'pct' ? Math.round(v) + '%' : fmt === 'num' ? num(v) : gbp(v); }
   function conf(nn, left, spread) {
     var cols = ['var(--paid)', 'var(--pop)', 'var(--card)', '#3DDC97'], out = '';
     for (var k = 0; k < nn; k++) out += '<span class="conf a-conf" aria-hidden="true" style="top:' + (6 + (k * 13) % 60) + 'px;left:' + (left + k * spread) + 'px;width:' + (k % 2 ? 9 : 12) + 'px;height:' + (k % 2 ? 16 : 9) + 'px;background:' + cols[k % 4] + ';animation-delay:' + (700 + k * 60) + 'ms"></span>';
@@ -323,7 +326,7 @@
     A.months.forEach(function (m, i) {
       var name = MONTHS[m.d.getMonth()];
       var stack = '<span class="stack a-bar' + (interactive && i === sel ? ' on' : '') + '" style="animation-delay:' + (300 + i * 55) + 'ms"><span class="s-lost" style="height:' + (m.lost / max * H) + 'px"></span><span class="s-owed" style="height:' + (m.owed / max * H) + 'px"></span><span class="s-paid" style="height:' + (m.paid / max * H) + 'px"></span></span>';
-      out += interactive ? '<button data-action="month" data-i="' + i + '" aria-label="' + esc(name + ': paid ' + gbp(m.paid) + ', still owed ' + gbp(m.owed) + ', lost ' + gbp(m.lost)) + '">' + stack + '</button>' : '<button tabindex="-1" aria-hidden="true">' + stack + '</button>';
+      out += interactive ? '<button data-action="month" data-i="' + i + '" aria-label="' + esc(name + ': paid ' + gbp(m.paid) + ', pending ' + gbp(m.owed) + ', lost ' + gbp(m.lost)) + '">' + stack + '</button>' : '<button tabindex="-1" aria-hidden="true">' + stack + '</button>';
     });
     out += '</div><div class="ticks">';
     A.months.forEach(function (m, i) { out += '<span class="' + (interactive && i === sel ? 'on' : '') + '">' + MONTHS[m.d.getMonth()].slice(0, 1) + '</span>'; });
@@ -360,9 +363,9 @@
     var top = A.shops[0];
     return '<section class="conf-wrap" style="min-height:70vh;display:flex;flex-direction:column;gap:16px;padding-top:10px">' +
       '<p class="a-in" style="margin:20px 0 0;font-size:22px;font-weight:800">Here\'s your commish</p>' +
-      '<div class="a-in" style="animation-delay:120ms"><p class="hero-num" style="font-size:92px">' + count(A.paid + A.owed, 'gbp', 200) + '</p><p class="sub" style="font-size:17px">earned or on its way, ' + fmtDs(A.min) + ' to ' + fmtD(A.max) + '</p></div>' + conf(16, 10, 22) +
+      '<div class="a-in" style="animation-delay:120ms"><p class="hero-num" style="font-size:92px">' + count(A.paid + A.owed, 'gbp', 200) + '</p><p class="sub" style="font-size:17px">earned or pending, ' + range(A.min, A.max) + '</p></div>' + conf(16, 10, 22) +
       '<div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;max-width:520px">' +
-      '<div class="tile pink a-pop t" style="align-self:flex-start;transform-origin:left center;animation-delay:900ms"><p>Still owed</p><b>' + gbp(A.owed) + '</b></div>' +
+      '<div class="tile pink a-pop t" style="align-self:flex-start;transform-origin:left center;animation-delay:900ms"><p>Pending payment</p><b>' + gbp(A.owed) + '</b></div>' +
       '<div class="tile a-pop t" style="align-self:flex-end;transform-origin:right center;animation-delay:1100ms"><p>Best month</p><b>' + MONTHS[A.bestMonth.d.getMonth()] + '</b></div>' +
       (top ? '<div class="tile ink a-pop t" style="align-self:flex-start;transform-origin:left center;animation-delay:1300ms"><p>Top shop</p><b>' + esc(top.name) + '</b></div>' : '') +
       '</div><a class="btn a-in" href="#home" style="margin-top:20px;max-width:520px;box-shadow:5px 5px 0 var(--pop);animation-delay:1600ms">See my dashboard</a></section>';
@@ -372,14 +375,15 @@
     var pro = S.plan === 'pro';
     var out = '';
     if (pro) {
-      out += '<section class="conf-wrap a-in"><p class="kicker">You\'re still owed</p><p class="hero-num">' + count(A.owed) + '</p><p class="sub">From your pending orders. Most settle within about ' + A.lagMed + ' days.</p>' + gmvLine(A) + conf(10, 150, 22) + '</section>';
-      out += '<div class="tiles"><div class="tile ink t a-in" style="animation-delay:100ms"><p>Paid out</p><b>' + count(A.paid, 'gbp', 100) + '</b></div><div class="tile t a-in" style="animation-delay:160ms"><p>Lost to returns</p><b>' + count(A.lost, 'gbp', 160) + '</b></div><div class="tile pink t a-in" style="animation-delay:220ms"><p>On track this month</p><b>' + count(A.forecast, 'gbp', 220) + '</b></div><div class="tile t a-in" style="animation-delay:280ms"><p>Per order, on average</p><b>' + gbp2(A.perOrder) + '</b></div></div>';
+      out += '<section class="conf-wrap a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + '</p>' + top3(A) + conf(10, 150, 22) + '</section>';
+      out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>';
       var sel = S.sel == null ? 11 : S.sel, m = A.months[sel];
       out += '<div class="card big t a-in" style="animation-delay:260ms"><div class="row-head"><h2>Your year</h2><span style="font-size:13px;font-weight:600">Tap a month</span></div>' +
-        '<div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Still owed</span><span><i class="key k-lost"></i>Lost</span></div>' + yearChart(A, 166, true) +
-        '<div class="alert t" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><span style="font-size:18px;font-weight:800">' + MONTHS[m.d.getMonth()] + ' ' + m.d.getFullYear() + '</span><span style="text-align:right">' + gbp(m.paid) + ' paid<br>' + gbp(m.owed) + ' owed, ' + gbp(m.lost) + ' lost</span></div>';
+        '<div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Pending payment</span><span><i class="key k-lost"></i>Lost</span></div>' + yearChart(A, 166, true) +
+        '<div class="alert t" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><span style="font-size:18px;font-weight:800">' + MONTHS[m.d.getMonth()] + ' ' + m.d.getFullYear() + '</span><span style="text-align:right">' + gbp(m.paid) + ' paid<br>' + gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost</span></div>';
+      out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission.</p>';
       var owedMonths = A.months.filter(function (x) { return x.owed > 0.5; });
-      if (owedMonths.length) out += '<p class="sub" style="margin-top:12px">Still owed: ' + owedMonths.map(function (x) { return MONTHS[x.d.getMonth()] + ' ' + gbp(x.owed); }).join(', ') + '.</p>';
+      if (owedMonths.length) out += '<p class="sub">Still pending: ' + owedMonths.map(function (x) { return MONTHS[x.d.getMonth()] + ' ' + gbp(x.owed); }).join(', ') + '.</p>';
       var empty = A.months.filter(function (x) { return !x.n; }).length;
       if (empty) out += '<p class="sub">' + empty + ' month' + (empty === 1 ? ' has' : 's have') + ' no data yet. <a href="#upload">Add older exports</a> to fill in your year.</p>';
       out += '</div>';
@@ -395,19 +399,19 @@
         '<p class="sub" style="margin-top:10px">Payouts usually land on a ' + A.payday + '.</p></div>';
       out += '</div>';
     } else {
-      out += '<section class="a-in"><p class="kicker">You\'ve been paid</p><p class="hero-num">' + count(A.paid) + '</p><p class="sub">' + fmtDs(A.min) + ' to ' + fmtD(A.max) + ', from one export</p>' + gmvLine(A) + '</section>';
-      out += '<div class="tiles"><div class="tile pink t a-in" style="animation-delay:100ms"><p>On its way</p><b>' + count(A.owed, 'gbp', 100) + '</b></div><div class="tile t a-in" style="animation-delay:160ms"><p>Lost to returns</p><b>' + count(A.lost, 'gbp', 160) + '</b></div><div class="tile t a-in" style="animation-delay:220ms"><p>Your real rate</p><b>' + A.effRate.toFixed(1) + '%</b></div><div class="tile ink t a-in" style="animation-delay:280ms"><p>Per order, on average</p><b>' + gbp2(A.perOrder) + '</b></div></div>';
+      out += '<section class="a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + ' (one export)</p>' + top3(A) + '</section>';
+      out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>';
       var wmax = Math.max.apply(null, A.weeks.map(function (w) { return w.paid + w.owed; })) || 1;
-      out += '<div class="grid2"><div class="card big t a-in" style="animation-delay:300ms"><h2>Week by week</h2><div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>On its way</span></div><div class="plot" style="height:136px">' +
+      out += '<div class="grid2"><div class="card big t a-in" style="animation-delay:300ms"><h2>Week by week</h2><div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Pending payment</span></div><div class="plot" style="height:136px">' +
         A.weeks.map(function (w, i) { return '<button tabindex="-1" aria-hidden="true"><span class="stack a-bar" style="animation-delay:' + (350 + i * 50) + 'ms"><span class="s-owed" style="height:' + (w.owed / wmax * 130) + 'px"></span><span class="s-paid" style="height:' + (w.paid / wmax * 130) + 'px"></span></span></button>'; }).join('') +
-        '</div><p class="sub" style="margin-top:12px">You average ' + gbp(A.perDay) + ' a day. Your effective rate is ' + A.effRate.toFixed(1) + '%, what you really earn on each £1 of sales.</p></div>';
+        '</div><p class="sub" style="margin-top:12px">You average ' + gbp(A.perDay) + ' of commission a day, paid and pending.</p></div>';
       var all = data_all(); var have = {};
       all.forEach(function (f) { var c = new Date(f.min.getFullYear(), f.min.getMonth(), 1); while (c <= f.max) { have[c.getFullYear() * 12 + c.getMonth()] = 1; c = new Date(c.getFullYear(), c.getMonth() + 1, 1); } });
       var latest = latestFile(); var lk = latest.min.getFullYear() * 12 + latest.min.getMonth(), hk = latest.max.getFullYear() * 12 + latest.max.getMonth();
       out += '<div class="card t a-in" style="animation-delay:360ms"><h2>Your data so far</h2><p class="sub" style="margin-bottom:12px">TikTok exports cover 90 days at a time. ' + A.nContent + ' videos and Lives earned you commish in this one.</p><div class="months12">' +
         A.months.map(function (mm, i) { var k = mm.d.getFullYear() * 12 + mm.d.getMonth(); return '<span><i class="a-pop t' + (k >= lk && k <= hk ? ' have' : '') + '" style="animation-delay:' + (400 + i * 40) + 'ms"></i>' + MONTHS[mm.d.getMonth()].slice(0, 1) + '</span>'; }).join('') + '</div></div></div>';
       var tease = A.months.slice(0, 11).filter(function (x) { return x.owed > 20; }).sort(function (a, b2) { return b2.owed - a.owed; })[0];
-      out += locked('<h2>Your year</h2><div style="height:12px"></div>' + yearChart(A, 120, false), tease ? gbp(tease.owed) + ' is still owed from ' + MONTHS[tease.d.getMonth()] : 'Your whole year in one view', 'See every month of your year with Pro');
+      out += locked('<h2>Your year</h2><div style="height:12px"></div>' + yearChart(A, 120, false), tease ? gbp(tease.owed) + ' is still pending from ' + MONTHS[tease.d.getMonth()] : 'Your whole year in one view', 'See every month of your year with Pro');
       out += nudge(A);
     }
     out += '<div class="card t a-in" style="animation-delay:460ms"><div class="row-head"><h2>Top shops</h2>' + (pro ? '<a href="#shops" style="font-weight:600">See all</a>' : '') + '</div><div style="margin-top:8px">' +
@@ -415,11 +419,16 @@
     return out;
   }
   function data_all() { return goodFiles(); }
-  function gmvLine(A) {
-    return '<div class="t" style="display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin-top:12px;background:var(--card);border:2.5px solid var(--line);border-radius:18px;padding:8px 14px">' +
-      '<span style="font-size:14px;font-weight:600">Sales you drove (GMV)</span><b style="font-size:22px;letter-spacing:-.02em">' + count(A.gmv, 'gbp', 150) + '</b>' +
-      '<span style="font-size:14px;color:var(--ink2)">' + num(A.items) + ' items sold</span></div>';
+  function top3(A) {
+    return '<div class="top3">' +
+      '<div class="box ink t"><p>Commission paid</p><b>' + count(A.paid, 'gbp', 100) + '</b></div>' +
+      '<div class="box t"><p>GMV (sales you drove)</p><b>' + count(A.gmv, 'gbp', 160) + '</b></div>' +
+      '<div class="box t"><p>Items sold</p><b>' + count(A.items, 'num', 220) + '</b></div></div>';
   }
+  function tilePending(A, dl) { return '<div class="tile pink t a-in" style="animation-delay:' + dl + 'ms"><p>Pending payment</p><b>' + count(A.owed, 'gbp', dl) + '</b><small>Most settle within about ' + A.lagMed + ' days</small></div>'; }
+  function tileLost(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Commission lost (returns or cancelled orders)</p><b>' + count(A.lost, 'gbp', dl) + '</b></div>'; }
+  function tileRate(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Real commission rate</p><b>' + A.effRate.toFixed(1) + '%</b><small>You earn ' + gbp2(A.effRate) + ' for every £100 of sales you drive</small></div>'; }
+  function tilePer(A, dl) { return '<div class="tile ink t a-in" style="animation-delay:' + dl + 'ms"><p>Commission per order (average)</p><b>' + gbp2(A.perOrder) + '</b></div>'; }
 
   function viewShops(A) {
     if (S.plan !== 'pro') return '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish in this export.</p></section>' +
@@ -474,7 +483,7 @@
     var current = T.y === A.taxNow;
     var monthsCount = Object.keys(T.months).length || 1;
     var bestM = Object.keys(T.months).sort(function (a, b) { return T.months[b] - T.months[a]; })[0];
-    var owedLine = current ? '<div class="line"><span>Still owed, counts when paid</span><b>' + gbp(A.owed) + '</b></div>' : '';
+    var owedLine = current ? '<div class="line"><span>Pending payment, counts when paid</span><b>' + gbp(A.owed) + '</b></div>' : '';
     var note = complete ? (current ? 'Covers this tax year so far.' : 'This tax year is fully covered by your exports.') : 'Your exports start ' + fmtD(coveredFrom) + ', so this year is only partly covered. Add older exports to complete it.';
     var out = '<section class="a-in"><h1>Tax year</h1><p class="sub">Your paid commish, by the date TikTok settled it.</p></section>';
     out += '<div class="seg t a-in" role="group" aria-label="Tax year" style="max-width:420px;grid-template-columns:repeat(' + Math.min(3, A.taxYears.length) + ',minmax(0,1fr))">' + A.taxYears.slice(0, 3).map(function (t) { return '<button data-action="taxyear" data-v="' + t.y + '" aria-pressed="' + (t.y === T.y) + '">' + label(t.y) + (t.y === A.taxNow ? ' so far' : '') + '</button>'; }).join('') + '</div>';
@@ -511,7 +520,7 @@
     var els = document.querySelectorAll('[data-count]');
     els.forEach(function (el) {
       var target = parseFloat(el.dataset.count), fmt = el.dataset.fmt, delay = +el.dataset.delay || 0;
-      var show = function (v) { el.textContent = fmt === 'pct' ? Math.round(v) + '%' : gbp(v); };
+      var show = function (v) { el.textContent = fmtVal(v, fmt); };
       if (reduceMotion) { show(target); return; }
       show(0); var t0 = null;
       var step = function (ts) { if (!t0) t0 = ts; var p = Math.min(1, Math.max(0, (ts - t0 - delay) / 1400)); show(target * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); };
