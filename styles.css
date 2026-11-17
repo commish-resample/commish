@@ -174,3 +174,4 @@ h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1
 .gridline{position:absolute;left:0;right:0;border-top:2px dashed var(--track);pointer-events:none}
 .gridline i{position:absolute;right:0;top:-9px;font-style:normal;font-size:11px;font-weight:700;background:var(--card);padding-left:4px}
 .card.big{box-shadow:none}
+.quiet main *{animation:none!important}

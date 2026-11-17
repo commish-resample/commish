@@ -326,7 +326,7 @@
     A.months.forEach(function (m, i) {
       var name = MONTHS[m.d.getMonth()];
       var stack = '<span class="stack a-bar' + (interactive && i === sel ? ' on' : '') + '" style="animation-delay:' + (300 + i * 55) + 'ms"><span class="s-lost" style="height:' + (m.lost / max * H) + 'px"></span><span class="s-owed" style="height:' + (m.owed / max * H) + 'px"></span><span class="s-paid" style="height:' + (m.paid / max * H) + 'px"></span></span>';
-      out += interactive ? '<button data-action="month" data-i="' + i + '" aria-label="' + esc(name + ': paid ' + gbp(m.paid) + ', pending ' + gbp(m.owed) + ', lost ' + gbp(m.lost)) + '">' + stack + '</button>' : '<button tabindex="-1" aria-hidden="true">' + stack + '</button>';
+      out += interactive ? '<button data-action="month" data-i="' + i + '" data-title="' + esc(name + ' ' + m.d.getFullYear()) + '" data-l1="' + esc(gbp(m.paid) + ' paid') + '" data-l2="' + esc(gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost') + '" aria-label="' + esc(name + ': paid ' + gbp(m.paid) + ', pending ' + gbp(m.owed) + ', lost ' + gbp(m.lost)) + '">' + stack + '</button>' : '<button tabindex="-1" aria-hidden="true">' + stack + '</button>';
     });
     out += '</div><div class="ticks">';
     A.months.forEach(function (m, i) { out += '<span class="' + (interactive && i === sel ? 'on' : '') + '">' + MONTHS[m.d.getMonth()].slice(0, 1) + '</span>'; });
@@ -380,7 +380,7 @@
       var sel = S.sel == null ? 11 : S.sel, m = A.months[sel];
       out += '<div class="card big t a-in" style="animation-delay:260ms"><div class="row-head"><h2>Your year</h2><span style="font-size:13px;font-weight:600">Tap a month</span></div>' +
         '<div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Pending payment</span><span><i class="key k-lost"></i>Lost</span></div>' + yearChart(A, 166, true) +
-        '<div class="alert t" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><span style="font-size:18px;font-weight:800">' + MONTHS[m.d.getMonth()] + ' ' + m.d.getFullYear() + '</span><span style="text-align:right">' + gbp(m.paid) + ' paid<br>' + gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost</span></div>';
+        '<div class="alert t" id="mDetail" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><span data-t style="font-size:18px;font-weight:800">' + MONTHS[m.d.getMonth()] + ' ' + m.d.getFullYear() + '</span><span style="text-align:right"><span data-l1>' + gbp(m.paid) + ' paid</span><br><span data-l2>' + gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost</span></span></div>';
       out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission.</p>';
       var owedMonths = A.months.filter(function (x) { return x.owed > 0.5; });
       if (owedMonths.length) out += '<p class="sub">Still pending: ' + owedMonths.map(function (x) { return MONTHS[x.d.getMonth()] + ' ' + gbp(x.owed); }).join(', ') + '.</p>';
@@ -411,9 +411,9 @@
         '<div style="position:relative">' +
         '<span class="gridline" style="bottom:' + PH + 'px"><i>' + gbp(top) + '</i></span><span class="gridline" style="bottom:' + (PH / 2) + 'px"><i>' + gbp(top / 2) + '</i></span>' +
         '<div class="plot" style="height:' + (PH + 2) + 'px;padding-right:44px">' +
-        A.weeks.map(function (w, i) { return '<button data-action="week" data-i="' + i + '" aria-label="' + esc('Week of ' + wlab(w) + ': ' + gbp(w.paid) + ' paid, ' + gbp(w.owed) + ' pending') + '"><span class="stack a-bar' + (i === ws ? ' on' : '') + '" style="animation-delay:' + (350 + i * 50) + 'ms"><span class="s-owed" style="height:' + (w.owed / top * PH) + 'px"></span><span class="s-paid" style="height:' + (w.paid / top * PH) + 'px"></span></span></button>'; }).join('') +
+        A.weeks.map(function (w, i) { return '<button data-action="week" data-i="' + i + '" data-title="' + esc('Week of ' + wlab(w)) + '" data-l1="' + esc(gbp(w.paid) + ' paid') + '" data-l2="' + esc(gbp(w.owed) + ' pending') + '" aria-label="' + esc('Week of ' + wlab(w) + ': ' + gbp(w.paid) + ' paid, ' + gbp(w.owed) + ' pending') + '"><span class="stack a-bar' + (i === ws ? ' on' : '') + '" style="animation-delay:' + (350 + i * 50) + 'ms"><span class="s-owed" style="height:' + (w.owed / top * PH) + 'px"></span><span class="s-paid" style="height:' + (w.paid / top * PH) + 'px"></span></span></button>'; }).join('') +
         '</div></div><div class="ticks" style="padding-right:44px">' + A.weeks.map(function (w, i) { return '<span>' + (i % 3 === 0 || i === A.weeks.length - 1 ? wlab(w).replace(' ', '<br>') : '') + '</span>'; }).join('') + '</div>' +
-        '<div class="alert t" style="margin-top:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><b>Week of ' + wlab(wk) + '</b><span style="text-align:right">' + gbp(wk.paid) + ' paid<br>' + gbp(wk.owed) + ' pending</span></div>' +
+        '<div class="alert t" id="wDetail" style="margin-top:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><b data-t>Week of ' + wlab(wk) + '</b><span style="text-align:right"><span data-l1>' + gbp(wk.paid) + ' paid</span><br><span data-l2>' + gbp(wk.owed) + ' pending</span></span></div>' +
         '<p class="sub" style="margin-top:12px">You average ' + gbp(A.perDay) + ' of commission a day, paid and pending.</p></div>';
       var all = data_all(); var have = {};
       all.forEach(function (f) { var c = new Date(f.min.getFullYear(), f.min.getMonth(), 1); while (c <= f.max) { have[c.getFullYear() * 12 + c.getMonth()] = 1; c = new Date(c.getFullYear(), c.getMonth() + 1, 1); } });
@@ -518,20 +518,31 @@
     $('#planLabel').textContent = S.plan === 'pro' ? 'Pro preview' : 'Free';
     $('#planBtn').setAttribute('aria-pressed', S.plan === 'pro');
   }
-  function render() {
+  function pickBar(btn, detailSel, ticks) {
+    var plot = btn.parentNode, i = Array.prototype.indexOf.call(plot.children, btn);
+    plot.querySelectorAll('.stack.on').forEach(function (x) { x.classList.remove('on'); });
+    var st = btn.querySelector('.stack'); if (st) st.classList.add('on');
+    if (ticks) { var tk = plot.parentNode.querySelector('.ticks'); if (tk) Array.prototype.forEach.call(tk.children, function (x, j) { x.classList.toggle('on', j === i); }); }
+    var d = $(detailSel); if (!d) return;
+    d.querySelector('[data-t]').textContent = btn.dataset.title;
+    d.querySelector('[data-l1]').textContent = btn.dataset.l1;
+    d.querySelector('[data-l2]').textContent = btn.dataset.l2;
+  }
+  function render(quiet) {
+    document.documentElement.classList.toggle('quiet', !!quiet);
     var r = route(), A = r === 'upload' ? null : data();
     var html = r === 'upload' ? viewUpload() : r === 'reveal' ? viewReveal(A) : r === 'home' ? viewHome(A) : r === 'shops' ? viewShops(A) : r === 'videos' ? viewVideos(A) : viewTax(A);
     $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.</p>';
     navs(r);
     bindDrop();
-    countUp();
+    countUp(quiet);
   }
-  function countUp() {
+  function countUp(quiet) {
     var els = document.querySelectorAll('[data-count]');
     els.forEach(function (el) {
       var target = parseFloat(el.dataset.count), fmt = el.dataset.fmt, delay = +el.dataset.delay || 0;
       var show = function (v) { el.textContent = fmtVal(v, fmt); };
-      if (reduceMotion) { show(target); return; }
+      if (reduceMotion || quiet) { show(target); return; }
       show(0); var t0 = null;
       var step = function (ts) { if (!t0) t0 = ts; var p = Math.min(1, Math.max(0, (ts - t0 - delay) / 1400)); show(target * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); };
       requestAnimationFrame(step);
@@ -562,10 +573,10 @@
     if (a === 'choose') $('#fileInput').click();
     else if (a === 'demo') { S.files = makeDemo(); location.hash = '#home'; render(); }
     else if (a === 'clear') { S.files = []; render(); }
-    else if (a === 'month') { S.sel = +b.dataset.i; render(); }
-    else if (a === 'week') { S.wsel = +b.dataset.i; render(); }
-    else if (a === 'sort') { S.shopSort = b.dataset.v; render(); }
-    else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(); }
+    else if (a === 'month') { S.sel = +b.dataset.i; pickBar(b, '#mDetail', true); }
+    else if (a === 'week') { S.wsel = +b.dataset.i; pickBar(b, '#wDetail', false); }
+    else if (a === 'sort') { S.shopSort = b.dataset.v; render(true); }
+    else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(true); }
     else if (a === 'unlock') { setPlan('pro'); toast("Payments aren't switched on yet, so here's a free Pro preview."); }
     else if (a === 'video') toast('Your how-to video will go here.');
     else if (a === 'print') window.print();
