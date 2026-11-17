@@ -418,8 +418,25 @@
       var all = data_all(); var have = {};
       all.forEach(function (f) { var c = new Date(f.min.getFullYear(), f.min.getMonth(), 1); while (c <= f.max) { have[c.getFullYear() * 12 + c.getMonth()] = 1; c = new Date(c.getFullYear(), c.getMonth() + 1, 1); } });
       var latest = latestFile(); var lk = latest.min.getFullYear() * 12 + latest.min.getMonth(), hk = latest.max.getFullYear() * 12 + latest.max.getMonth();
-      out += '<div class="card t a-in" style="animation-delay:360ms"><h2>Your data so far</h2><p class="sub" style="margin-bottom:12px">TikTok exports cover 90 days at a time. ' + A.nContent + ' videos and Lives earned you commish in this one.</p><div class="months12">' +
-        A.months.map(function (mm, i) { var k = mm.d.getFullYear() * 12 + mm.d.getMonth(); return '<span><i class="a-pop t' + (k >= lk && k <= hk ? ' have' : '') + '" style="animation-delay:' + (400 + i * 40) + 'ms"></i>' + MONTHS[mm.d.getMonth()].slice(0, 1) + '</span>'; }).join('') + '</div></div></div>';
+      var inR = function (mm) { var k = mm.d.getFullYear() * 12 + mm.d.getMonth(); return k >= lk && k <= hk; };
+      var covered = A.months.filter(inR), nCov = covered.length;
+      var mtop = Math.max.apply(null, covered.map(function (x) { return x.paid + x.owed; })) || 1;
+      var kfmt = function (v) { return v >= 1000 ? '£' + (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k' : gbp(v); };
+      var bestCov = covered.slice().sort(function (a2, b2) { return (b2.paid + b2.owed) - (a2.paid + a2.owed); })[0];
+      var yearPace = A.perDay * 365;
+      out += '<div class="card t a-in" style="animation-delay:360ms"><div class="row-head"><h2>Your year so far</h2><span class="badge t">' + nCov + ' of 12 months</span></div>' +
+        '<p class="sub">This export covers ' + range(latest.min, latest.max) + '. Here\'s what each month earned, paid and pending.</p>' +
+        '<div class="yearmap">' + A.months.map(function (mm, i) {
+          var have = inR(mm), v = mm.paid + mm.owed, h = have ? Math.max(8, v / mtop * 86) : 0;
+          return '<span class="ym">' + (have
+            ? '<em>' + kfmt(v) + '</em><i class="ym-bar a-bar' + (mm === bestCov ? ' best' : '') + '" style="height:' + h + 'px;animation-delay:' + (450 + i * 60) + 'ms"></i>'
+            : '<i class="ym-q a-pop" style="animation-delay:' + (400 + i * 40) + 'ms">?</i>') +
+            '<b>' + MONTHS[mm.d.getMonth()].slice(0, 1) + '</b></span>';
+        }).join('') + '</div>' +
+        '<div class="tiles" style="margin-top:14px">' +
+        '<div class="tile t"><p>Best month here</p><b>' + MONTHS[bestCov.d.getMonth()] + '</b><small>' + gbp(bestCov.paid + bestCov.owed) + ' paid and pending</small></div>' +
+        '<div class="tile pink t"><p>Your yearly pace</p><b>' + kfmt(yearPace) + '</b><small>If you keep earning ' + gbp(A.perDay) + ' a day</small></div></div>' +
+        '<p class="sub" style="margin-top:12px">' + (12 - nCov) + ' months are still a mystery. Was ' + MONTHS[bestCov.d.getMonth()] + ' your record? <button class="linkish" data-action="unlock" style="font-size:inherit;min-height:0">Unlock Pro</button> to merge older exports and find out.</p></div></div>';
       var tease = A.months.slice(0, 11).filter(function (x) { return x.owed > 20; }).sort(function (a, b2) { return b2.owed - a.owed; })[0];
       out += locked('<h2>Your year</h2><div style="height:12px"></div>' + yearChart(A, 120, false), tease ? gbp(tease.owed) + ' is still pending from ' + MONTHS[tease.d.getMonth()] : 'Your whole year in one view', 'See every month of your year with Pro');
       out += nudge(A);

@@ -175,3 +175,12 @@ h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1
 .gridline i{position:absolute;right:0;top:-9px;font-style:normal;font-size:11px;font-weight:700;background:var(--card);padding-left:4px}
 .card.big{box-shadow:none}
 .quiet main *{animation:none!important}
+.yearmap{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;align-items:end;height:136px;margin-top:14px;border-bottom:2.5px solid var(--line);padding-bottom:0}
+.ym{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px}
+.ym em{font-style:normal;font-size:10px;font-weight:800;white-space:nowrap}
+.ym-bar{display:block;width:100%;max-width:30px;border-radius:8px 8px 0 0;background:var(--paid);transform-origin:bottom center}
+.ym-bar.best{background:var(--owed);box-shadow:inset 0 0 0 2.5px var(--line)}
+.ym-q{display:flex;align-items:center;justify-content:center;width:100%;max-width:30px;height:30px;border-radius:9px;border:2px dashed var(--line);font-style:normal;font-weight:800;font-size:14px;opacity:.55;margin-bottom:4px}
+.ym b{position:absolute;bottom:-20px;font-size:11px;font-weight:600}
+.yearmap+.tiles{margin-top:30px!important}
+@media (min-width:900px){.ym em{font-size:12px}}
