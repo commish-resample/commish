@@ -426,7 +426,7 @@
       '<div class="box t"><p>Items sold</p><b>' + count(A.items, 'num', 220) + '</b></div></div>';
   }
   function tilePending(A, dl) { return '<div class="tile pink t a-in" style="animation-delay:' + dl + 'ms"><p>Pending payment</p><b>' + count(A.owed, 'gbp', dl) + '</b><small>Most settle within about ' + A.lagMed + ' days</small></div>'; }
-  function tileLost(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Commission lost (returns or cancelled orders)</p><b>' + count(A.lost, 'gbp', dl) + '</b></div>'; }
+  function tileLost(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Commission lost (returns/cancellations)</p><b>' + count(A.lost, 'gbp', dl) + '</b></div>'; }
   function tileRate(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Real commission rate</p><b>' + A.effRate.toFixed(1) + '%</b><small>You earn ' + gbp2(A.effRate) + ' for every £100 of sales you drive</small></div>'; }
   function tilePer(A, dl) { return '<div class="tile ink t a-in" style="animation-delay:' + dl + 'ms"><p>Commission per order (average)</p><b>' + gbp2(A.perOrder) + '</b></div>'; }
 
