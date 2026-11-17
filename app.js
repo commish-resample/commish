@@ -402,9 +402,19 @@
       out += '<section class="a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + ' (one export)</p>' + top3(A) + '</section>';
       out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>';
       var wmax = Math.max.apply(null, A.weeks.map(function (w) { return w.paid + w.owed; })) || 1;
-      out += '<div class="grid2"><div class="card big t a-in" style="animation-delay:300ms"><h2>Week by week</h2><div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Pending payment</span></div><div class="plot" style="height:136px">' +
-        A.weeks.map(function (w, i) { return '<button tabindex="-1" aria-hidden="true"><span class="stack a-bar" style="animation-delay:' + (350 + i * 50) + 'ms"><span class="s-owed" style="height:' + (w.owed / wmax * 130) + 'px"></span><span class="s-paid" style="height:' + (w.paid / wmax * 130) + 'px"></span></span></button>'; }).join('') +
-        '</div><p class="sub" style="margin-top:12px">You average ' + gbp(A.perDay) + ' of commission a day, paid and pending.</p></div>';
+      var ws = S.wsel == null || S.wsel >= A.weeks.length ? A.weeks.length - 1 : S.wsel, wk = A.weeks[ws];
+      var wlab = function (w) { return new Date(w.k).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
+      var nice = function (v) { var m = Math.pow(10, Math.floor(Math.log10(v || 1))); return Math.ceil(v / m * 2) / 2 * m; };
+      var top = nice(wmax), PH = 130;
+      out += '<div class="grid2"><div class="card t a-in" style="animation-delay:300ms"><h2>Week by week</h2><p class="sub">Commission from each week\'s orders. Tap a bar to see the week.</p>' +
+        '<div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Pending payment</span></div>' +
+        '<div style="position:relative">' +
+        '<span class="gridline" style="bottom:' + PH + 'px"><i>' + gbp(top) + '</i></span><span class="gridline" style="bottom:' + (PH / 2) + 'px"><i>' + gbp(top / 2) + '</i></span>' +
+        '<div class="plot" style="height:' + (PH + 2) + 'px;padding-right:44px">' +
+        A.weeks.map(function (w, i) { return '<button data-action="week" data-i="' + i + '" aria-label="' + esc('Week of ' + wlab(w) + ': ' + gbp(w.paid) + ' paid, ' + gbp(w.owed) + ' pending') + '"><span class="stack a-bar' + (i === ws ? ' on' : '') + '" style="animation-delay:' + (350 + i * 50) + 'ms"><span class="s-owed" style="height:' + (w.owed / top * PH) + 'px"></span><span class="s-paid" style="height:' + (w.paid / top * PH) + 'px"></span></span></button>'; }).join('') +
+        '</div></div><div class="ticks" style="padding-right:44px">' + A.weeks.map(function (w, i) { return '<span>' + (i % 3 === 0 || i === A.weeks.length - 1 ? wlab(w).replace(' ', '<br>') : '') + '</span>'; }).join('') + '</div>' +
+        '<div class="alert t" style="margin-top:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><b>Week of ' + wlab(wk) + '</b><span style="text-align:right">' + gbp(wk.paid) + ' paid<br>' + gbp(wk.owed) + ' pending</span></div>' +
+        '<p class="sub" style="margin-top:12px">You average ' + gbp(A.perDay) + ' of commission a day, paid and pending.</p></div>';
       var all = data_all(); var have = {};
       all.forEach(function (f) { var c = new Date(f.min.getFullYear(), f.min.getMonth(), 1); while (c <= f.max) { have[c.getFullYear() * 12 + c.getMonth()] = 1; c = new Date(c.getFullYear(), c.getMonth() + 1, 1); } });
       var latest = latestFile(); var lk = latest.min.getFullYear() * 12 + latest.min.getMonth(), hk = latest.max.getFullYear() * 12 + latest.max.getMonth();
@@ -553,6 +563,7 @@
     else if (a === 'demo') { S.files = makeDemo(); location.hash = '#home'; render(); }
     else if (a === 'clear') { S.files = []; render(); }
     else if (a === 'month') { S.sel = +b.dataset.i; render(); }
+    else if (a === 'week') { S.wsel = +b.dataset.i; render(); }
     else if (a === 'sort') { S.shopSort = b.dataset.v; render(); }
     else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(); }
     else if (a === 'unlock') { setPlan('pro'); toast("Payments aren't switched on yet, so here's a free Pro preview."); }

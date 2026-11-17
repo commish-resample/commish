@@ -55,7 +55,7 @@ main{width:100%;max-width:1240px;margin:0 auto;padding:8px 20px 120px;display:fl
 .card.big{box-shadow:5px 5px 0 var(--shadow)}
 .card.pop{background:var(--pop)}
 .card.dark{background:var(--chipBg);color:var(--chipInk);border:0}
-@media (min-width:900px){.card{padding:24px 26px;border-radius:34px}.card.big{box-shadow:7px 7px 0 var(--shadow)}}
+@media (min-width:900px){.card{padding:24px 26px;border-radius:34px}}
 h1{margin:0;font-size:44px;font-weight:800;letter-spacing:-.045em;line-height:1}
 h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
 @media (min-width:900px){h1{font-size:64px}h2{font-size:28px}}
@@ -171,3 +171,6 @@ h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1
 .box b{display:block;margin-top:4px;font-size:clamp(16px,4.9vw,26px);font-weight:800;letter-spacing:-.04em;line-height:1.05;white-space:nowrap}
 .tile small{display:block;margin-top:4px;font-size:12px;font-weight:600;line-height:1.3;opacity:.85}
 @media (min-width:900px){.top3{gap:16px}.box{padding:20px 22px;border-radius:28px}.box p{font-size:16px}.box b{font-size:52px}}
+.gridline{position:absolute;left:0;right:0;border-top:2px dashed var(--track);pointer-events:none}
+.gridline i{position:absolute;right:0;top:-9px;font-style:normal;font-size:11px;font-weight:700;background:var(--card);padding-left:4px}
+.card.big{box-shadow:none}
