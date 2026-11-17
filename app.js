@@ -350,11 +350,10 @@
   // ---------- views ----------
   function privacyTip() {
     return '<span class="tipwrap"><button class="eye" data-action="tip" aria-expanded="false" aria-controls="privTip" aria-label="How your data stays private">' +
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 11v6"/><circle cx="12" cy="7.2" r="0.6" fill="currentColor"/></svg></button>' +
       '<span class="tip" id="privTip" role="tooltip"><b>How your data stays private</b>' +
       '<span>Your export is opened by your own browser, on this device. It is never sent to Commish or anyone else.</span>' +
       '<span>Commish has no database and no file storage, so there is nowhere for your orders to go.</span>' +
-      '<span>Refresh or close the page and your orders are gone from the screen.</span>' +
       '<span>Want proof? Open Commish, switch on aeroplane mode, then add your export. It still works, because nothing is sent over the internet.</span></span></span>';
   }
   function mergeNote(g) {
