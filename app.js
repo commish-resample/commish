@@ -198,20 +198,24 @@
     A.perDay = (A.paid + A.owed) / A.days;
     var cids = {}; ok.forEach(function (r) { if (r.cid) cids[r.cid] = 1; }); A.nContent = Object.keys(cids).length;
 
-    // months: 12 ending at latest month
-    var end = new Date(A.max.getFullYear(), A.max.getMonth(), 1);
-    A.months = [];
-    for (var i = 11; i >= 0; i--) { var m = new Date(end.getFullYear(), end.getMonth() - i, 1); A.months.push({ d: m, key: m.getFullYear() * 12 + m.getMonth(), paid: 0, owed: 0, lost: 0, n: 0, qn: 0 }); }
-    var mIdx = {}; A.months.forEach(function (m, i) { mIdx[m.key] = i; });
+    // months: aggregate every month, then show the calendar year (Jan to Dec)
+    var MM = {};
     rows.forEach(function (r) {
-      var i = mIdx[r.odate.getFullYear() * 12 + r.odate.getMonth()]; if (i == null) return;
-      var m = A.months[i]; m.n++;
+      var k = r.odate.getFullYear() * 12 + r.odate.getMonth();
+      var m = MM[k] || (MM[k] = { paid: 0, owed: 0, lost: 0, n: 0, qn: 0 }); m.n++;
       if (r.status === 'Settled') m.paid += earned(r); else if (r.status === 'Pending') { m.owed += r.est; m.qn++; } else m.lost += r.est;
     });
-    var best = A.months.slice().sort(function (a, b) { return (b.paid + b.owed) - (a.paid + a.owed); })[0];
-    A.bestMonth = best;
-    // last full month earned or due
-    var lf = A.months[A.months.length - 2]; A.lastFull = lf;
+    var mk = function (y, mo) { var d0 = new Date(y, mo, 1), k = y * 12 + mo, x = MM[k] || { paid: 0, owed: 0, lost: 0, n: 0, qn: 0 }; return { d: d0, key: k, paid: x.paid, owed: x.owed, lost: x.lost, n: x.n, qn: x.qn }; };
+    var curKey = A.max.getFullYear() * 12 + A.max.getMonth();
+    A.years = []; Object.keys(MM).forEach(function (k) { var y = Math.floor(k / 12); if (A.years.indexOf(y) < 0) A.years.push(y); }); A.years.sort();
+    A.year = (S.year && A.years.indexOf(S.year) >= 0) ? S.year : A.max.getFullYear();
+    A.months = [];
+    for (var i = 0; i < 12; i++) { var m = mk(A.year, i); m.future = m.key > curKey; m.current = m.key === curKey; A.months.push(m); }
+    A.curIdx = A.year === A.max.getFullYear() ? A.max.getMonth() : 11;
+    var allM = Object.keys(MM).map(function (k) { return mk(Math.floor(k / 12), k % 12); });
+    A.bestMonth = allM.slice().sort(function (a, b) { return (b.paid + b.owed) - (a.paid + a.owed); })[0];
+    A.curMonth = mk(A.max.getFullYear(), A.max.getMonth());
+    var pm = new Date(A.max.getFullYear(), A.max.getMonth() - 1, 1); A.lastFull = mk(pm.getFullYear(), pm.getMonth());
 
     // weeks
     var wkStart = function (x) { var y = new Date(x.getFullYear(), x.getMonth(), x.getDate()); y.setDate(y.getDate() - (y.getDay() + 6) % 7); return +y; };
@@ -252,7 +256,7 @@
     A.payday = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][payday.indexOf(Math.max.apply(null, payday))];
 
     // forecast this month
-    var mNow = A.months[11], dayOfMonth = A.max.getDate(), dim = new Date(A.max.getFullYear(), A.max.getMonth() + 1, 0).getDate();
+    var mNow = A.curMonth, dayOfMonth = A.max.getDate(), dim = new Date(A.max.getFullYear(), A.max.getMonth() + 1, 0).getDate();
     A.forecast = (mNow.paid + mNow.owed) / dayOfMonth * dim;
 
     // content
@@ -322,14 +326,14 @@
   }
   function yearChart(A, H, interactive) {
     var max = Math.max.apply(null, A.months.map(function (m) { return m.paid + m.owed + m.lost; })) || 1;
-    var sel = S.sel == null ? 11 : S.sel, out = '<div class="plot" style="height:' + (H + 6) + 'px">';
+    var sel = S.sel == null ? A.curIdx : S.sel, out = '<div class="plot" style="height:' + (H + 6) + 'px">';
     A.months.forEach(function (m, i) {
       var name = MONTHS[m.d.getMonth()];
       var stack = '<span class="stack a-bar' + (interactive && i === sel ? ' on' : '') + '" style="animation-delay:' + (300 + i * 55) + 'ms"><span class="s-lost" style="height:' + (m.lost / max * H) + 'px"></span><span class="s-owed" style="height:' + (m.owed / max * H) + 'px"></span><span class="s-paid" style="height:' + (m.paid / max * H) + 'px"></span></span>';
       out += interactive ? '<button data-action="month" data-i="' + i + '" data-title="' + esc(name + ' ' + m.d.getFullYear()) + '" data-l1="' + esc(gbp(m.paid) + ' paid') + '" data-l2="' + esc(gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost') + '" aria-label="' + esc(name + ': paid ' + gbp(m.paid) + ', pending ' + gbp(m.owed) + ', lost ' + gbp(m.lost)) + '">' + stack + '</button>' : '<button tabindex="-1" aria-hidden="true">' + stack + '</button>';
     });
     out += '</div><div class="ticks">';
-    A.months.forEach(function (m, i) { out += '<span class="' + (interactive && i === sel ? 'on' : '') + '">' + MONTHS[m.d.getMonth()].slice(0, 1) + '</span>'; });
+    A.months.forEach(function (m, i) { out += '<span class="' + (interactive && i === sel ? 'on' : '') + '"' + (m.future ? ' style="opacity:.45"' : '') + '>' + MONTHS[m.d.getMonth()].slice(0, 1) + '</span>'; });
     return out + '</div>';
   }
   function heat(grid, max, cellFn) {
@@ -387,14 +391,15 @@
     if (pro) {
       out += '<section class="conf-wrap a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + '</p>' + top3(A) + conf(10, 150, 22) + '</section>';
       out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>';
-      var sel = S.sel == null ? 11 : S.sel, m = A.months[sel];
-      out += '<div class="card big t a-in" style="animation-delay:260ms"><div class="row-head"><h2>Your year</h2><span style="font-size:13px;font-weight:600">Tap a month</span></div>' +
+      var sel = S.sel == null ? A.curIdx : S.sel, m = A.months[sel];
+      out += '<div class="card big t a-in" style="animation-delay:260ms"><div class="row-head"><h2>Your ' + A.year + '</h2><span style="font-size:13px;font-weight:600">Tap a month</span></div>' +
+        (A.years.length > 1 ? '<div class="seg t" role="group" aria-label="Year" style="max-width:320px;margin-top:10px;grid-template-columns:repeat(' + Math.min(4, A.years.length) + ',minmax(0,1fr))">' + A.years.slice(-4).map(function (y) { return '<button data-action="year" data-v="' + y + '" aria-pressed="' + (y === A.year) + '">' + y + '</button>'; }).join('') + '</div>' : '') +
         '<div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Pending payment</span><span><i class="key k-lost"></i>Lost</span></div>' + yearChart(A, 166, true) +
         '<div class="alert t" id="mDetail" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><span data-t style="font-size:18px;font-weight:800">' + MONTHS[m.d.getMonth()] + ' ' + m.d.getFullYear() + '</span><span style="text-align:right"><span data-l1>' + gbp(m.paid) + ' paid</span><br><span data-l2>' + gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost</span></span></div>';
-      out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission.</p>';
+      if (A.year === A.max.getFullYear()) out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission.</p>';
       var owedMonths = A.months.filter(function (x) { return x.owed > 0.5; });
       if (owedMonths.length) out += '<p class="sub">Still pending: ' + owedMonths.map(function (x) { return MONTHS[x.d.getMonth()] + ' ' + gbp(x.owed); }).join(', ') + '.</p>';
-      var empty = A.months.filter(function (x) { return !x.n; }).length;
+      var empty = A.months.filter(function (x) { return !x.n && !x.future; }).length;
       if (empty) out += '<p class="sub">' + empty + ' month' + (empty === 1 ? ' has' : 's have') + ' no data yet. <a href="#upload">Add older exports</a> to fill in your year.</p>';
       out += '</div>';
       out += '<div class="grid2">';
@@ -429,15 +434,16 @@
       all.forEach(function (f) { var c = new Date(f.min.getFullYear(), f.min.getMonth(), 1); while (c <= f.max) { have[c.getFullYear() * 12 + c.getMonth()] = 1; c = new Date(c.getFullYear(), c.getMonth() + 1, 1); } });
       var latest = latestFile(); var lk = latest.min.getFullYear() * 12 + latest.min.getMonth(), hk = latest.max.getFullYear() * 12 + latest.max.getMonth();
       var inR = function (mm) { var k = mm.d.getFullYear() * 12 + mm.d.getMonth(); return k >= lk && k <= hk; };
-      var covered = A.months.filter(inR), nCov = covered.length;
+      var covered = A.months.filter(inR), nCov = covered.length, soFar = A.months.filter(function (x) { return !x.future; }).length;
       var mtop = Math.max.apply(null, covered.map(function (x) { return x.paid + x.owed; })) || 1;
       var kfmt = function (v) { return v >= 1000 ? '£' + (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k' : gbp(v); };
       var bestCov = covered.slice().sort(function (a2, b2) { return (b2.paid + b2.owed) - (a2.paid + a2.owed); })[0];
       var yearPace = A.perDay * 365;
-      out += '<div class="card t a-in" style="animation-delay:360ms"><div class="row-head"><h2>Your year so far</h2><span class="badge t">' + nCov + ' of 12 months</span></div>' +
+      out += '<div class="card t a-in" style="animation-delay:360ms"><div class="row-head"><h2>Your ' + A.year + ' so far</h2><span class="badge t">' + nCov + ' of ' + soFar + ' months</span></div>' +
         '<p class="sub">This export covers ' + range(latest.min, latest.max) + '. Here\'s what each month earned, paid and pending.</p>' +
         '<div class="yearmap">' + A.months.map(function (mm, i) {
           var have = inR(mm), v = mm.paid + mm.owed, h = have ? Math.max(8, v / mtop * 86) : 0;
+          if (mm.future) return '<span class="ym" style="opacity:.4"><i class="ym-q" style="border-style:dotted">&nbsp;</i><b>' + MONTHS[mm.d.getMonth()].slice(0, 1) + '</b></span>';
           return '<span class="ym">' + (have
             ? '<em>' + kfmt(v) + '</em><i class="ym-bar a-bar' + (mm === bestCov ? ' best' : '') + '" style="height:' + h + 'px;animation-delay:' + (450 + i * 60) + 'ms"></i>'
             : '<i class="ym-q a-pop" style="animation-delay:' + (400 + i * 40) + 'ms">?</i>') +
@@ -446,8 +452,8 @@
         '<div class="tiles" style="margin-top:14px">' +
         '<div class="tile t"><p>Best month here</p><b>' + MONTHS[bestCov.d.getMonth()] + '</b><small>' + gbp(bestCov.paid + bestCov.owed) + ' paid and pending</small></div>' +
         '<div class="tile pink t"><p>Your yearly pace</p><b>' + kfmt(yearPace) + '</b><small>If you keep earning ' + gbp(A.perDay) + ' a day</small></div></div>' +
-        '<p class="sub" style="margin-top:12px">' + (12 - nCov) + ' months are still a mystery. Was ' + MONTHS[bestCov.d.getMonth()] + ' your record? <button class="linkish" data-action="unlock" style="font-size:inherit;min-height:0">Unlock Pro</button> to merge older exports and find out.</p></div></div>';
-      var tease = A.months.slice(0, 11).filter(function (x) { return x.owed > 20; }).sort(function (a, b2) { return b2.owed - a.owed; })[0];
+        '<p class="sub" style="margin-top:12px">' + (soFar - nCov) + ' months of ' + A.year + ' are still a mystery. Was ' + MONTHS[bestCov.d.getMonth()] + ' your record? <button class="linkish" data-action="unlock" style="font-size:inherit;min-height:0">Unlock Pro</button> to merge older exports and find out.</p></div></div>';
+      var tease = A.months.filter(function (x) { return !x.current && !x.future; }).filter(function (x) { return x.owed > 20; }).sort(function (a, b2) { return b2.owed - a.owed; })[0];
       out += locked('<h2>Your year</h2><div style="height:12px"></div>' + yearChart(A, 120, false), tease ? gbp(tease.owed) + ' is still pending from ' + MONTHS[tease.d.getMonth()] : 'Your whole year in one view', 'See every month of your year with Pro');
       out += nudge(A);
     }
@@ -602,6 +608,7 @@
     else if (a === 'clear') { S.files = []; render(); }
     else if (a === 'month') { S.sel = +b.dataset.i; pickBar(b, '#mDetail', true); }
     else if (a === 'week') { S.wsel = +b.dataset.i; pickBar(b, '#wDetail', false); }
+    else if (a === 'year') { S.year = +b.dataset.v; S.sel = null; render(true); }
     else if (a === 'sort') { S.shopSort = b.dataset.v; render(true); }
     else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(true); }
     else if (a === 'unlock') { setPlan('pro'); toast("Payments aren't switched on yet, so here's a free Pro preview."); }
