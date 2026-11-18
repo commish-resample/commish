@@ -120,8 +120,11 @@ h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1
 .step i{flex:0 0 26px;height:26px;border-radius:50%;background:var(--tint);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;font-style:normal}
 .video{flex:0 0 124px;height:220px;border-radius:22px;background:var(--chipBg);color:var(--chipInk);border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 10px;font-size:13px;font-weight:600;text-align:center}
 .files{display:flex;flex-direction:column;gap:6px;font-size:14px}
-.file{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:16px;background:var(--card);border:2px solid var(--line)}
+.file{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap;padding:10px 12px;border-radius:16px;background:var(--card);border:2px solid var(--line)}
+.file b{min-width:0;overflow-wrap:anywhere}
+.file span{white-space:nowrap;color:var(--ink2)}
 .file.err{background:var(--pop)}
+.file.err span{white-space:normal}
 
 /* locks */
 .locked{position:relative;overflow:hidden}

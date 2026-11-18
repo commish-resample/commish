@@ -710,7 +710,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 19:00</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 19:45</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
@@ -934,7 +934,8 @@
   function boot() {
     var q = new URLSearchParams(location.search), signin = q.get('signin'), up = q.get('upgrade');
     if (signin || up) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
-    var restore = (signin === 'ok' || up) ? unstash() : Promise.resolve(false);
+    // Only bring files back after a sign-in or payment; otherwise clear any leftover copy.
+    var restore = (signin === 'ok' || up) ? unstash() : kv('readwrite', function (st) { st.delete('stash'); }).then(function () { return false; }, function () { return false; });
     Promise.all([restore, loadMe()]).then(function (r) {
       if (r[0]) { var h = (location.hash || '#home'); if (h === '#upload' || h === '#') h = '#home'; try { history.replaceState(null, '', h); } catch (e) {} render(); }
       if (signin === 'ok') {
@@ -1009,7 +1010,7 @@
     render(); window.scrollTo(0, 0);
     if (SECTIONS.indexOf(r) > 0) setTimeout(function () { goSection(r, false); }, 30);
   });
-  window.__commish = { S: S, data: data, makeDemo: makeDemo };
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__commish = { S: S, data: data, makeDemo: makeDemo };
   try { localStorage.removeItem('commish-plan'); } catch (e) {}
   render();
   boot();

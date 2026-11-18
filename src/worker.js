@@ -34,6 +34,11 @@ const SCHEMA = [
     expires INTEGER NOT NULL,
     created_at INTEGER NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS login_ips (
+    ip_hash TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS login_ips_ip ON login_ips(ip_hash, created_at)`,
   `CREATE TABLE IF NOT EXISTS stripe_events (
     id TEXT PRIMARY KEY,
     type TEXT,
@@ -165,17 +170,21 @@ async function login(req, env) {
   const hourAgo = now() - 3600;
   const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_tokens WHERE email = ? AND created_at > ?').bind(email, hourAgo).first();
   if (recent && recent.n >= 5) return json({ error: 'Too many sign-in emails for this address. Wait an hour and try again.' }, 429);
+  // Stop one visitor sending sign-in emails to lots of different addresses.
+  const ipHash = await sha256('ip:' + (req.headers.get('cf-connecting-ip') || 'unknown'));
+  const fromIp = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_ips WHERE ip_hash = ? AND created_at > ?').bind(ipHash, hourAgo).first();
+  if (fromIp && fromIp.n >= 10) return json({ error: 'Too many sign-in emails from this connection. Wait an hour and try again.' }, 429);
+  await env.DB.prepare('INSERT INTO login_ips (ip_hash, created_at) VALUES (?, ?)').bind(ipHash, now()).run();
 
   const token = randomToken();
   await env.DB.prepare('INSERT INTO login_tokens (hash, email, expires, created_at) VALUES (?, ?, ?, ?)')
     .bind(await sha256(token), email, now() + LINK_MINUTES * 60, now()).run();
-  // Tidy old tokens and sessions now and then.
-  if (Math.random() < 0.05) {
-    await env.DB.batch([
-      env.DB.prepare('DELETE FROM login_tokens WHERE expires < ?').bind(now() - 86400),
-      env.DB.prepare('DELETE FROM sessions WHERE expires < ?').bind(now())
-    ]);
-  }
+  // Tidy up: old sign-in links (kept a day at most), ended sessions and old rate-limit rows.
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM login_tokens WHERE created_at < ?').bind(now() - 86400),
+    env.DB.prepare('DELETE FROM sessions WHERE expires < ?').bind(now()),
+    env.DB.prepare('DELETE FROM login_ips WHERE created_at < ?').bind(now() - 86400)
+  ]);
 
   const link = `${origin(req, env)}/api/verify?t=${token}`;
   if (env.DEV_SHOW_LINK === '1') return json({ ok: true, devLink: link });
@@ -189,10 +198,24 @@ async function login(req, env) {
   return json({ ok: true });
 }
 
+// Email security scanners often open links before the person does. So opening the link
+// only shows a page that signs you in with a second step; scanners don't take it.
+function verifyPage(token) {
+  const t = String(token).replace(/[^A-Za-z0-9_-]/g, '');
+  return new Response(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Signing you in · Commish</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#FFE45C;color:#1B1340;font-family:system-ui,sans-serif}
+.c{background:#fff;border:3px solid #1B1340;border-radius:24px;padding:28px 24px;max-width:360px;margin:20px;text-align:center}
+h1{margin:0 0 8px;font-size:26px}p{margin:0 0 18px;line-height:1.5}
+button{min-height:52px;padding:0 24px;border:0;border-radius:26px;background:#1B1340;color:#FFE45C;font:inherit;font-weight:800;font-size:17px;cursor:pointer}</style></head>
+<body><form class="c" method="post" action="/api/verify"><h1>Signing you in</h1><p>One moment. If nothing happens, tap the button.</p>
+<input type="hidden" name="t" value="${t}"><button type="submit">Sign in to Commish</button></form>
+<script>document.forms[0].submit()</script></body></html>`, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin' } });
+}
+
 async function verify(req, env) {
-  const url = new URL(req.url);
-  const token = url.searchParams.get('t') || '';
   const site = origin(req, env);
+  let token = '';
+  try { const f = await req.formData(); token = String(f.get('t') || ''); } catch (e) {}
   const row = token ? await env.DB.prepare('SELECT * FROM login_tokens WHERE hash = ?').bind(await sha256(token)).first() : null;
   if (!row || row.used || row.expires < now()) {
     return Response.redirect(`${site}/?signin=expired`, 302);
@@ -331,6 +354,12 @@ async function applySubscription(env, sub, userIdHint) {
   const interval = item && item.price && item.price.recurring ? item.price.recurring.interval : null;
   const periodEnd = sub.current_period_end || (item && item.current_period_end) || null;
   const userId = userIdHint || (sub.metadata && sub.metadata.user_id);
+  // If this person already has a different subscription on file, don't let an old,
+  // ended one switch them back to Free.
+  const current = userId
+    ? await env.DB.prepare('SELECT stripe_sub, plan FROM users WHERE id = ?').bind(userId).first()
+    : await env.DB.prepare('SELECT stripe_sub, plan FROM users WHERE stripe_customer = ?').bind(sub.customer).first();
+  if (current && current.stripe_sub && current.stripe_sub !== sub.id && !active && current.plan === 'pro') return;
   // Newer Stripe API versions record a scheduled cancellation as cancel_at (a date)
   // rather than cancel_at_period_end, so treat either as "ending".
   const ending = !!(sub.cancel_at_period_end || sub.cancel_at) && active;
@@ -390,7 +419,8 @@ export default {
       if (m === 'POST' && p !== '/api/stripe-webhook' && !sameOrigin(req)) return json({ error: 'forbidden' }, 403);
       if (p === '/api/me' && m === 'GET') return await me(req, env);
       if (p === '/api/login' && m === 'POST') return await login(req, env);
-      if (p === '/api/verify' && m === 'GET') return await verify(req, env);
+      if (p === '/api/verify' && m === 'GET') return verifyPage(url.searchParams.get('t') || '');
+      if (p === '/api/verify' && m === 'POST') return await verify(req, env);
       if (p === '/api/logout' && m === 'POST') return await logout(req, env);
       if (p === '/api/checkout' && m === 'POST') return await checkout(req, env);
       if (p === '/api/portal' && m === 'POST') return await portal(req, env);
