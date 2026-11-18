@@ -17,9 +17,12 @@
   "vars": {
     "SITE_URL": "https://commish.fyi",
     "EMAIL_FROM": "Commish <hello@commish.fyi>",
-    "ADMIN_EMAILS": ""
+    "ADMIN_EMAILS": "commish.fyi.unable081@passmail.net",
+    // Stripe price ids (not secret). Test mode for now; swap for live ids at launch.
+    "STRIPE_PRICE_MONTH": "price_1UdArIFikdM6areniLkSk7q3",
+    "STRIPE_PRICE_YEAR": "price_1UdAszFikdM6arenb23vkHHA"
   },
   "observability": { "enabled": true }
   // Secrets, added in the Cloudflare dashboard (never in this file):
-  // RESEND_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_MONTH, STRIPE_PRICE_YEAR
+  // RESEND_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 }
