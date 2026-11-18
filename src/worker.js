@@ -412,6 +412,11 @@ async function webhook(req, env) {
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    // One address for everyone: send www.commish.fyi to commish.fyi.
+    if (url.hostname.startsWith('www.')) {
+      url.hostname = url.hostname.slice(4);
+      return Response.redirect(url.toString(), 301);
+    }
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req);
     try {
       await ensureSchema(env);
