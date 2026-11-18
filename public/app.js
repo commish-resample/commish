@@ -362,9 +362,33 @@
       '<p style="margin:0;font-size:15px;line-height:1.4">Merge every export, see your whole year, find stuck orders and know when your buyers buy.</p>' +
       '<button class="btn pinky" data-action="unlock">Unlock Pro</button><p style="margin:0;font-size:13px;text-align:center">Or £19.99 a year. Cancel any time.</p></div>';
   }
+  // Straight-line trend of monthly earnings (paid + pending), from the first month with orders.
+  // The current month uses its projected total so a part-month doesn't drag the line down.
+  function yearTrend(A) {
+    var pts = [];
+    A.months.forEach(function (m, i) {
+      if (m.future) return;
+      var v = m.current && A.forecast ? A.forecast : m.paid + m.owed;
+      if (!m.n && !pts.length) return;
+      pts.push({ i: i, v: v });
+    });
+    if (pts.length < 3) return null;
+    var n = pts.length, sx = 0, sy = 0, sxy = 0, sxx = 0;
+    pts.forEach(function (p) { sx += p.i; sy += p.v; sxy += p.i * p.v; sxx += p.i * p.i; });
+    var slope = (n * sxy - sx * sy) / (n * sxx - sx * sx), icpt = (sy - slope * sx) / n;
+    var i0 = pts[0].i, i1 = pts[n - 1].i;
+    return { i0: i0, i1: i1, y0: Math.max(0, icpt + slope * i0), y1: Math.max(0, icpt + slope * i1), slope: slope };
+  }
   function yearChart(A, H, interactive) {
     var max = Math.max.apply(null, A.months.map(function (m) { return m.paid + m.owed + m.lost; })) || 1;
-    var sel = S.sel == null ? A.curIdx : S.sel, out = '<div class="plot" style="height:' + (H + 6) + 'px">';
+    var tr = interactive ? yearTrend(A) : null;
+    if (tr) max = Math.max(max, tr.y0, tr.y1);
+    var sel = S.sel == null ? A.curIdx : S.sel, out = '<div class="plot' + (tr ? ' has-trend' : '') + '" style="height:' + (H + 6) + 'px">';
+    if (tr) {
+      var cx = function (i) { return ((i + 0.5) / A.months.length * 1200).toFixed(1); };
+      var cy = function (v) { return (H + 6 - v / max * H).toFixed(1); };
+      out += '<svg class="trend" viewBox="0 0 1200 ' + (H + 6) + '" preserveAspectRatio="none" aria-hidden="true"><line x1="' + cx(tr.i0) + '" y1="' + cy(tr.y0) + '" x2="' + cx(tr.i1) + '" y2="' + cy(tr.y1) + '" vector-effect="non-scaling-stroke"/></svg>';
+    }
     A.months.forEach(function (m, i) {
       var name = MONTHS[m.d.getMonth()];
       var stack = '<span class="stack a-bar' + (interactive && i === sel ? ' on' : '') + '" style="animation-delay:' + (300 + i * 55) + 'ms"><span class="s-lost" style="height:' + (m.lost / max * H) + 'px"></span><span class="s-owed" style="height:' + (m.owed / max * H) + 'px"></span><span class="s-paid" style="height:' + (m.paid / max * H) + 'px"></span></span>';
@@ -440,8 +464,10 @@
       var sel = S.sel == null ? A.curIdx : S.sel, m = A.months[sel];
       out += '<div class="card big t a-in" style="animation-delay:260ms"><div class="row-head"><h2>Your ' + A.year + '</h2><span style="font-size:13px;font-weight:600">Tap a month</span></div>' +
         (A.years.length > 1 ? '<div class="seg t" role="group" aria-label="Year" style="max-width:320px;margin-top:10px;grid-template-columns:repeat(' + Math.min(4, A.years.length) + ',minmax(0,1fr))">' + A.years.slice(-4).map(function (y) { return '<button data-action="year" data-v="' + y + '" aria-pressed="' + (y === A.year) + '">' + y + '</button>'; }).join('') + '</div>' : '') +
-        '<div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Pending payment</span><span><i class="key k-lost"></i>Lost</span></div>' + yearChart(A, 166, true) +
+        '<div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Pending payment</span><span><i class="key k-lost"></i>Lost</span>' + (yearTrend(A) ? '<span><i class="key k-trend"></i>Trend</span>' : '') + '</div>' + yearChart(A, 166, true) +
         '<div class="alert t" id="mDetail" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><span data-t style="font-size:18px;font-weight:800">' + MONTHS[m.d.getMonth()] + ' ' + m.d.getFullYear() + '</span><span style="text-align:right"><span data-l1>' + gbp(m.paid) + ' paid</span><br><span data-l2>' + gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost</span></span></div>';
+      var tr = yearTrend(A);
+      if (tr) { var per = Math.round(Math.abs(tr.slope)); out += '<p class="sub" style="margin-top:12px"><b>Trend since ' + MONTHS[A.months[tr.i0].d.getMonth()] + ':</b> ' + (per < 10 ? 'roughly flat, about the same each month.' : (tr.slope > 0 ? 'up' : 'down') + ' about ' + gbp(per) + ' a month, paid and pending.') + '</p>'; }
       if (A.year === A.max.getFullYear()) out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission (' + gbp(A.fc.soFar) + ' paid and pending in the first ' + A.fc.days + ' day' + (A.fc.days === 1 ? '' : 's') + ' of ' + A.fc.month + ', about ' + gbp(A.fc.perDay) + ' a day, multiplied by ' + A.fc.dim + ' days).</p>';
       var owedMonths = A.months.filter(function (x) { return x.owed > 0.5; });
       if (owedMonths.length) out += '<p class="sub">Still pending: ' + owedMonths.map(function (x) { return MONTHS[x.d.getMonth()] + ' ' + gbp(x.owed); }).join(', ') + '.</p>';
@@ -720,7 +746,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:30</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:40</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
