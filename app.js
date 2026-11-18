@@ -302,8 +302,14 @@
     A.bestPost = bestPost; A.postMax = bestPost ? bestPost.avg : 1; A.nVideos = vids.length;
     // double down: products with few videos, high per-video earnings
     var PV = {};
-    vids.forEach(function (c) { Object.keys(c.prods).forEach(function (p) { var x = PV[p] || (PV[p] = { p: p, vids: 0, e: 0 }); x.vids++; x.e += c.e / Object.keys(c.prods).length; }); });
-    A.doubleDown = Object.keys(PV).map(function (k) { var x = PV[k]; x.per = x.e / x.vids; return x; }).filter(function (x) { return x.vids <= 2; }).sort(function (a, b) { return b.per - a.per; }).slice(0, 3);
+    var isVid = {}; vids.forEach(function (c) { isVid[c.cid] = 1; });
+    ok.forEach(function (r) {
+      if (!r.cid || !isVid[r.cid]) return;
+      var x = PV[r.product] || (PV[r.product] = { p: r.product, cids: {}, vids: 0, e: 0, orders: 0 });
+      if (!x.cids[r.cid]) { x.cids[r.cid] = 1; x.vids++; }
+      x.e += earned(r); x.orders++;
+    });
+    A.doubleDown = Object.keys(PV).map(function (k) { var x = PV[k]; x.per = x.e / x.vids; return x; }).filter(function (x) { return x.vids <= 2 && x.orders >= 3; }).sort(function (a, b) { return b.per - a.per; }).slice(0, 3);
     var prodShop = {}; rows.forEach(function (r) { prodShop[r.product] = r.shop; });
     A.doubleDown.forEach(function (x) { x.shop = prodShop[x.p]; });
 
