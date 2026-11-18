@@ -101,13 +101,19 @@ async function currentUser(req, env) {
   return row || null;
 }
 
+function isGifted(env, email) {
+  return String(env.PRO_EMAILS || '').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean).includes(email);
+}
+
 function publicUser(u, env) {
   const admin = isAdmin(env, u.email);
+  const gifted = !admin && isGifted(env, u.email);
   return {
     signedIn: true,
     email: u.email,
-    plan: admin ? 'pro' : u.plan,
+    plan: admin || gifted ? 'pro' : u.plan,
     admin,
+    gifted,
     status: u.sub_status || null,
     interval: u.sub_interval || null,
     renews: u.period_end || null,
@@ -252,7 +258,7 @@ async function checkout(req, env) {
   const u = await currentUser(req, env);
   if (!u) return json({ error: 'Sign in first.' }, 401);
   if (!env.STRIPE_SECRET_KEY) return json({ error: 'Payments aren\'t switched on yet.' }, 503);
-  if (u.plan === 'pro') return json({ error: 'You\'re already on Pro.' }, 400);
+  if (u.plan === 'pro' || isAdmin(env, u.email) || isGifted(env, u.email)) return json({ error: 'You\'re already on Pro.' }, 400);
   let body = {};
   try { body = await req.json(); } catch (e) {}
   const yearly = body.interval === 'year';

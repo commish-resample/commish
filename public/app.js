@@ -880,7 +880,7 @@
     }
     // account
     var u = S.user || {}, pro = u.plan === 'pro';
-    var planLine = u.admin ? 'Pro (owner account)' : pro ? 'Pro, ' + (u.interval === 'year' ? '£19.99 a year' : '£2.99 a month') : 'Free';
+    var planLine = u.admin ? 'Pro (owner account)' : u.gifted ? 'Pro (free, on the house)' : pro ? 'Pro, ' + (u.interval === 'year' ? '£19.99 a year' : '£2.99 a month') : 'Free';
     var renew = '';
     if (pro && !u.admin && u.renews) renew = u.cancelAtEnd ? 'Pro until ' + fmtLong(u.renews) + ', then back to Free.' : 'Renews on ' + fmtLong(u.renews) + '.';
     if (pro && u.status === 'past_due') renew = 'Your last payment didn\'t go through. Update your card to keep Pro.';

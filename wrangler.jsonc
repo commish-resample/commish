@@ -18,6 +18,8 @@
     "SITE_URL": "https://commish.fyi",
     "EMAIL_FROM": "Commish <hello@commish.fyi>",
     "ADMIN_EMAILS": "commish.fyi.unable081@passmail.net",
+    // Friends and testers who get Pro free (comma separated, no card needed).
+    "PRO_EMAILS": "",
     // Stripe price ids (not secret). Test mode for now; swap for live ids at launch.
     "STRIPE_PRICE_MONTH": "price_1UdArIFikdM6areniLkSk7q3",
     "STRIPE_PRICE_YEAR": "price_1UdAszFikdM6arenb23vkHHA"
