@@ -448,18 +448,20 @@
       var empty = A.months.filter(function (x) { return !x.n && !x.future; }).length;
       if (empty) out += '<p class="sub">' + empty + ' month' + (empty === 1 ? ' has' : 's have') + ' no data yet. <a href="#upload">Add older exports</a> to fill in your year.</p>';
       out += '</div>';
-      out += '<div class="grid2">';
+      var after = '';
+      after += '<div class="grid2">';
       var b = A.buyBest;
-      out += '<div class="card pop t a-in" style="animation-delay:340ms"><h2>When your buyers buy</h2><p style="margin:4px 0 12px;font-size:14px;font-weight:600">' + DAYS[b[0]] + ' ' + BANDS[b[1]] + ' are your strongest. A good time to go Live.</p>' +
+      after += '<div class="card pop t a-in" style="animation-delay:340ms"><h2>When your buyers buy</h2><p style="margin:4px 0 12px;font-size:14px;font-weight:600">' + DAYS[b[0]] + ' ' + BANDS[b[1]] + ' are your strongest. A good time to go Live.</p>' +
         heat(A.buyHeat, A.buyMax, function (v, r, c) { return '<span class="cell a-pop t" style="background:rgba(var(--cell),' + (0.06 + v / A.buyMax * 0.94).toFixed(2) + ');animation-delay:' + (450 + (r + c) * 45) + 'ms" title="' + gbp(v) + '"></span>'; }) + '</div>';
       var diff = A.actSettled - A.estSettled;
-      out += '<div class="card t a-in" style="animation-delay:400ms"><h2>Payout check</h2><p class="sub">Settled orders: what TikTok estimated against what it paid.</p>' +
+      after += '<div class="card t a-in" style="animation-delay:400ms"><h2>Payout check</h2><p class="sub">Settled orders: what TikTok estimated against what it paid.</p>' +
         '<div class="tiles" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px"><div class="tile t"><p>Estimated</p><b style="font-size:20px">' + gbp(A.estSettled) + '</b></div><div class="tile t"><p>Paid</p><b style="font-size:20px">' + gbp(A.actSettled) + '</b></div><div class="tile ink t"><p>Difference</p><b style="font-size:20px">' + (diff < 0 ? '−' : '+') + gbp(Math.abs(diff)) + '</b></div></div>' +
         '<div class="alert t" style="margin-top:12px">' + (A.short.length ? A.short.length + ' orders paid less than estimated, ' + gbp(A.short.reduce(function (s, r) { return s + r.est - r.actual; }, 0)) + ' short.' : 'Every settled order paid exactly what TikTok estimated.') + '</div>' +
         (A.stuck.length ? '<div class="alert pink t" style="margin-top:10px">' + A.stuck.length + ' orders worth ' + gbp(A.stuckVal) + ' have been pending for over 30 days. Most of yours settle in about ' + A.lagMed + ' days, so these are worth asking TikTok about.</div>' : '') +
         '<p class="sub" style="margin-top:10px">Payouts usually land on a ' + A.payday + '.</p></div>';
-      out += '</div>';
-      out += challengeCard(A, true);
+      after += '</div>';
+      after += challengeCard(A, true);
+      A._afterShops = after;
     } else {
       out += '<section class="a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + ' (latest 90 days)</p>' + top3(A) + '</section>';
       out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>' + insightsCard(A, 'free');
@@ -501,7 +503,7 @@
         '<div class="tile pink t"><p>Your yearly pace</p><b>' + kfmt(yearPace) + '</b><small>If you keep earning ' + gbp(A.perDay) + ' a day</small></div></div>' +
         (soFar - nCov > 0 ? '<p class="sub" style="margin-top:12px">' + (soFar - nCov) + ' months of ' + A.year + ' are still a mystery. Was ' + MONTHS[bestCov.d.getMonth()] + ' your record?</p>' : '') + '</div></div>';
     }
-    out += '<div class="card t a-in" style="animation-delay:460ms"><div class="row-head"><h2>Top shops</h2>' + (pro ? '<a href="#shops" style="font-weight:600">See all</a>' : '') + '</div><p class="sub">The shops that have earned you the most commission, paid and pending. Returned and cancelled orders don\'t count.</p><div style="margin-top:8px">' +
+    if (!pro) out += '<div class="card t a-in" style="animation-delay:460ms"><div class="row-head"><h2>Top shops</h2>' + (pro ? '<a href="#shops" style="font-weight:600">See all</a>' : '') + '</div><p class="sub">The shops that have earned you the most commission, paid and pending. Returned and cancelled orders don\'t count.</p><div style="margin-top:8px">' +
       A.shops.slice(0, 5).map(function (s, i) { return '<div class="list-row"><div style="display:flex;justify-content:space-between;gap:10px;font-size:15px;font-weight:600"><span>' + esc(s.name) + '</span><b>' + gbp(s.earned) + '</b></div>' + topLine(s) + '<div class="bar-track t" style="margin-top:6px"><div class="bar-fill a-barx" style="width:' + (s.earned / (A.shops[0].earned || 1) * 100) + '%;background:' + (i ? 'var(--owed)' : 'var(--paid)') + ';animation-delay:' + (600 + i * 90) + 'ms"></div></div></div>'; }).join('') + '</div></div>';
     return out;
   }
@@ -616,7 +618,7 @@
         '<p style="margin:12px 0 0;font-size:14px">Worth weighing up when you pick what to promote next.</p></div>';
     }
     if (A.newShops.length) out += '<div class="card t a-in" style="animation-delay:300ms"><h2>New this month</h2><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">' + A.newShops.map(function (s, i) { return '<span class="badge a-pop t" style="font-size:15px;padding:8px 12px;border-radius:18px;animation-delay:' + (500 + i * 100) + 'ms">' + esc(s) + '</span>'; }).join('') + '</div></div>';
-    return out + '</div></div>';
+    return out + '</div></div>' + (A._afterShops || '');
   }
 
   function viewVideos(A) {
@@ -713,7 +715,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:15</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:20</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
