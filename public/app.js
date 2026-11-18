@@ -25,8 +25,7 @@
   var svg = function (name, size) { return '<svg width="' + (size || 22) + '" height="' + (size || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[name] + '</svg>'; };
 
   // ---------- state ----------
-  var S = { files: [], plan: 'free', sel: null, shopSort: 'earned', taxYear: null, revealed: false };
-  try { S.plan = localStorage.getItem('commish-plan') || 'free'; } catch (e) {}
+  var S = { files: [], plan: 'free', user: null, ready: null, previewFree: false, sel: null, shopSort: 'earned', taxYear: null, revealed: false };
 
   // ---------- parsing ----------
   var COLS = {
@@ -666,8 +665,7 @@
     if (!hasData) items = [];
     $('#bottomnav').innerHTML = items.map(function (x) { return '<a href="#' + x[0] + '"' + (cur === x[0] ? ' aria-current="page"' : '') + '>' + svg(x[2]) + x[1] + '</a>'; }).join('');
     $('#topnav').innerHTML = items.map(function (x) { return '<a class="t" href="#' + x[0] + '"' + (cur === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }).join('');
-    $('#planLabel').textContent = S.plan === 'pro' ? 'Pro preview' : 'Free';
-    $('#planBtn').setAttribute('aria-pressed', S.plan === 'pro');
+    acctButton();
   }
   function pickBar(btn, detailSel, ticks) {
     var plot = btn.parentNode, i = Array.prototype.indexOf.call(plot.children, btn);
@@ -692,7 +690,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br>Version 18 Nov, 09:05</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br>Version 18 Nov, 16:00</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
@@ -752,6 +750,191 @@
     dz.addEventListener('drop', function (e) { addFiles(e.dataTransfer.files); });
   }
 
+  // ---------- accounts & payments ----------
+  // Only your email and plan go to our server. Export files stay in this browser.
+  var PRICES = { month: { label: 'Monthly', price: '£2.99', per: 'a month', note: 'Cancel any time' }, year: { label: 'Yearly', price: '£19.99', per: 'a year', note: 'Works out at £1.67 a month' } };
+  var SH = { mode: null, interval: 'year', reason: null, sent: null, devLink: null, busy: false, err: '' };
+
+  function api(path, body) {
+    return fetch(path, {
+      method: body ? 'POST' : 'GET',
+      credentials: 'same-origin',
+      headers: body ? { 'content-type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || 'Something went wrong. Try again.'); return d; });
+    });
+  }
+
+  function applyPlan() {
+    var pro = !!(S.user && S.user.plan === 'pro');
+    S.plan = pro && !(S.user.admin && S.previewFree) ? 'pro' : 'free';
+  }
+
+  function acctButton() {
+    var b = $('#acctBtn'); if (!b) return;
+    b.hidden = !S.user && !(S.ready && S.ready.signin);
+    $('#acctLabel').textContent = !S.user ? 'Sign in' : (S.user.plan === 'pro' ? 'Pro' : 'Free');
+    b.setAttribute('aria-pressed', S.plan === 'pro');
+    b.classList.toggle('out', !S.user);
+    b.setAttribute('aria-label', !S.user ? 'Sign in' : 'Your account, ' + (S.user.plan === 'pro' ? 'Pro' : 'Free') + ' plan');
+  }
+
+  function loadMe() {
+    return api('/api/me').then(function (u) { S.ready = u.ready || {}; S.user = u.signedIn ? u : null; }, function () { S.ready = {}; S.user = null; })
+      .then(function () { var before = S.plan; applyPlan(); acctButton(); if (before !== S.plan) { S.sel = null; render(true); } });
+  }
+
+  // Keep uploaded files in this browser while you pop out to sign in or pay, so you don't have to upload again.
+  function idb() {
+    return new Promise(function (res, rej) {
+      if (!window.indexedDB) return rej(new Error('no idb'));
+      var o = indexedDB.open('commish', 1);
+      o.onupgradeneeded = function () { o.result.createObjectStore('kv'); };
+      o.onsuccess = function () { res(o.result); }; o.onerror = function () { rej(o.error); };
+    });
+  }
+  function kv(mode, fn) {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction('kv', mode), st = tx.objectStore('kv'), out;
+        var rq = fn(st); if (rq) rq.onsuccess = function () { out = rq.result; };
+        tx.oncomplete = function () { db.close(); res(out); }; tx.onerror = function () { db.close(); rej(tx.error); };
+      });
+    });
+  }
+  function stash() {
+    var files = goodFiles(); if (!files.length) return Promise.resolve();
+    return kv('readwrite', function (st) { return st.put({ at: Date.now(), files: files, hash: location.hash }, 'stash'); }).catch(function () {});
+  }
+  function unstash() {
+    return kv('readwrite', function (st) { var rq = st.get('stash'); st.delete('stash'); return rq; }).then(function (v) {
+      if (!v || !v.files || Date.now() - v.at > 3 * 3600 * 1000 || goodFiles().length) return false;
+      S.files = v.files; return true;
+    }).catch(function () { return false; });
+  }
+
+  function openSheet(mode, reason) {
+    SH.mode = mode; SH.reason = reason || null; SH.err = ''; SH.busy = false;
+    if (mode !== 'signin') SH.sent = null;
+    var host = $('#sheetHost'), first = !host.innerHTML;
+    SH.lastFocus = first ? document.activeElement : SH.lastFocus;
+    drawSheet();
+    document.documentElement.classList.add('sheet-open');
+    var f = host.querySelector('input, .sheet [data-focus]'); if (f) setTimeout(function () { f.focus(); }, first ? 260 : 0);
+  }
+  function closeSheet() {
+    var host = $('#sheetHost'); if (!host.innerHTML) return;
+    var bg = host.firstChild; bg.classList.add('closing');
+    document.documentElement.classList.remove('sheet-open');
+    setTimeout(function () { host.innerHTML = ''; SH.mode = null; if (SH.lastFocus && SH.lastFocus.focus) SH.lastFocus.focus(); }, 200);
+  }
+  function fmtLong(sec) { return sec ? new Date(sec * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''; }
+
+  function sheetBody() {
+    var err = SH.err ? '<p class="sheet-err" role="alert">' + esc(SH.err) + '</p>' : '';
+    if (SH.mode === 'signin') {
+      if (SH.sent) return '<div class="sheet-ic">' + mailIcon() + '</div><h2 id="sheetTitle">Check your email</h2>' +
+        '<p class="sub">We\'ve sent a sign-in link to <b>' + esc(SH.sent) + '</b>. Open it on this device. It works once and lasts 20 minutes.</p>' +
+        (SH.devLink ? '<p class="sub"><a href="' + esc(SH.devLink) + '">Test link (only shown while testing)</a></p>' : '') +
+        '<p class="sub small">Nothing there? Check your spam folder, or <button class="linkish" data-action="to-signin">try again</button>.</p>';
+      return '<h2 id="sheetTitle">' + (SH.reason === 'unlock' ? 'Sign in to unlock Pro' : 'Sign in to Commish') + '</h2>' +
+        '<p class="sub">No password needed. Pop in your email and we\'ll send you a link.</p>' +
+        '<form id="signinForm" class="sheet-form" novalidate><label for="email">Email</label>' +
+        '<input id="email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>' + err +
+        '<button class="btn" type="submit"' + (SH.busy ? ' disabled' : '') + '>' + (SH.busy ? 'Sending…' : 'Email me a link') + '</button></form>' +
+        '<p class="sub small">Your export files never leave your device. We only keep your email and your plan.</p>';
+    }
+    if (SH.mode === 'upgrade') {
+      var opts = ['year', 'month'].map(function (k) {
+        var p = PRICES[k], on = SH.interval === k;
+        return '<button type="button" class="opt t' + (on ? ' on' : '') + '" role="radio" aria-checked="' + on + '" data-action="interval" data-v="' + k + '">' +
+          (k === 'year' ? '<span class="save">Save 44%</span>' : '') +
+          '<span class="opt-l">' + p.label + '</span><span class="opt-p">' + p.price + '</span><span class="opt-n">' + p.per + '</span><span class="opt-s">' + p.note + '</span></button>';
+      }).join('');
+      return '<h2 id="sheetTitle">Go Pro</h2>' +
+        '<ul class="perks"><li>Merge all your exports, as far back as you like</li><li>Every insight, plus your whole year month by month</li><li>Shops, videos, Lives and tax year totals</li><li>Lost orders worth chasing with TikTok</li></ul>' +
+        '<div class="opts" role="radiogroup" aria-label="Billing">' + opts + '</div>' + err +
+        '<button class="btn wide" data-action="checkout"' + (SH.busy ? ' disabled' : '') + '>' + (SH.busy ? 'Opening payment…' : 'Continue to payment') + '</button>' +
+        '<p class="sub small">Secure payment by Stripe. Cancel any time from your account.</p>';
+    }
+    // account
+    var u = S.user || {}, pro = u.plan === 'pro';
+    var planLine = u.admin ? 'Pro (owner account)' : pro ? 'Pro, ' + (u.interval === 'year' ? '£19.99 a year' : '£2.99 a month') : 'Free';
+    var renew = '';
+    if (pro && !u.admin && u.renews) renew = u.cancelAtEnd ? 'Pro until ' + fmtLong(u.renews) + ', then back to Free.' : 'Renews on ' + fmtLong(u.renews) + '.';
+    if (pro && u.status === 'past_due') renew = 'Your last payment didn\'t go through. Update your card to keep Pro.';
+    return '<h2 id="sheetTitle">Your account</h2>' +
+      '<dl class="acct"><dt>Email</dt><dd>' + esc(u.email) + '</dd><dt>Plan</dt><dd>' + planLine + '</dd></dl>' +
+      (renew ? '<p class="sub">' + renew + '</p>' : '') + err +
+      (!pro ? '<button class="btn wide" data-action="to-upgrade" data-focus>Go Pro</button>' : '') +
+      (u.hasBilling ? '<button class="btn ghost wide" data-action="portal"' + (SH.busy ? ' disabled' : '') + '>' + (SH.busy ? 'Opening…' : 'Manage subscription') + '</button>' : '') +
+      (u.admin ? '<button class="btn ghost wide" data-action="preview-free" aria-pressed="' + S.previewFree + '">' + (S.previewFree ? 'Back to Pro view' : 'Preview what Free users see') + '</button>' : '') +
+      '<button class="linkish" data-action="signout" data-focus>Sign out</button>';
+  }
+  function mailIcon() { return '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg>'; }
+
+  function drawSheet() {
+    var host = $('#sheetHost'), fresh = !host.innerHTML;
+    var inner = '<button class="sheet-x" data-action="sheet-close" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' + sheetBody();
+    if (fresh) host.innerHTML = '<div class="sheet-bg" data-bg><div class="sheet t" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">' + inner + '</div></div>';
+    else host.querySelector('.sheet').innerHTML = inner;
+    var f = $('#signinForm'); if (f) f.addEventListener('submit', sendLink);
+  }
+
+  function sendLink(e) {
+    e.preventDefault();
+    var email = ($('#email').value || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { SH.err = 'That email address doesn\'t look right. Check it and try again.'; drawSheet(); $('#email').value = email; $('#email').focus(); return; }
+    SH.busy = true; SH.err = ''; drawSheet(); $('#email').value = email;
+    stash().then(function () { return api('/api/login', { email: email }); }).then(function (d) {
+      SH.busy = false; SH.sent = email; SH.devLink = d.devLink || null; drawSheet();
+    }, function (er) { SH.busy = false; SH.err = er.message; drawSheet(); $('#email').value = email; });
+  }
+
+  function startCheckout() {
+    SH.busy = true; SH.err = ''; drawSheet();
+    stash().then(function () { return api('/api/checkout', { interval: SH.interval }); }).then(function (d) { location.href = d.url; },
+      function (er) { SH.busy = false; SH.err = er.message; drawSheet(); });
+  }
+  function openPortal() {
+    SH.busy = true; SH.err = ''; drawSheet();
+    stash().then(function () { return api('/api/portal', {}); }).then(function (d) { location.href = d.url; },
+      function (er) { SH.busy = false; SH.err = er.message; drawSheet(); });
+  }
+  function signOut() {
+    api('/api/logout', {}).catch(function () {}).then(function () {
+      S.user = null; S.previewFree = false; applyPlan(); closeSheet(); S.sel = null; render(true); toast('You\'re signed out.');
+    });
+  }
+
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && SH.mode) closeSheet(); });
+  document.addEventListener('click', function (e) { if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-bg')) closeSheet(); });
+
+  function boot() {
+    var q = new URLSearchParams(location.search), signin = q.get('signin'), up = q.get('upgrade');
+    if (signin || up) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
+    var restore = (signin === 'ok' || up) ? unstash() : Promise.resolve(false);
+    Promise.all([restore, loadMe()]).then(function (r) {
+      if (r[0]) { var h = (location.hash || '#home'); if (h === '#upload' || h === '#') h = '#home'; try { history.replaceState(null, '', h); } catch (e) {} render(); }
+      if (signin === 'ok') {
+        if (!S.user) toast('That didn\'t work. Try signing in again.');
+        else if (S.user.plan === 'pro') toast('You\'re signed in. Pro is on.');
+        else { toast('You\'re signed in.'); }
+      } else if (signin === 'expired') { openSheet('signin'); SH.err = 'That link has expired or was already used. Send yourself a new one.'; drawSheet(); }
+      else if (up === 'cancelled') toast('No payment taken. You\'re still on Free.');
+      else if (up === 'done') waitForPro(0);
+    });
+  }
+  // Stripe tells our server a moment after you pay, so check a few times.
+  function waitForPro(n) {
+    if (S.user && S.user.plan === 'pro') { celebrate(); return; }
+    if (n > 8) { toast('Payment received. Pro can take a minute to switch on, so refresh shortly.'); return; }
+    if (n === 0) toast('Payment received. Switching on Pro…');
+    setTimeout(function () { loadMe().then(function () { waitForPro(n + 1); }); }, 1500);
+  }
+  function celebrate() { toast('Welcome to Pro! Everything\'s unlocked.'); }
+
   // ---------- events ----------
   document.addEventListener('click', function (e) {
     var b = e.target.closest('[data-action]'); if (!b) return;
@@ -764,7 +947,16 @@
     else if (a === 'year') { S.year = +b.dataset.v; S.sel = null; render(true); }
     else if (a === 'sort') { S.shopSort = b.dataset.v; render(true); }
     else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(true); }
-    else if (a === 'unlock') { setPlan('pro'); toast("Payments aren't switched on yet, so here's a free Pro preview."); }
+    else if (a === 'unlock' && !S.user && !(S.ready && S.ready.signin)) toast('Pro is coming very soon. Watch this space!');
+    else if (a === 'unlock') openSheet(S.user ? (S.plan === 'pro' ? 'account' : 'upgrade') : 'signin', S.user ? null : 'unlock');
+    else if (a === 'sheet-close') closeSheet();
+    else if (a === 'interval') { SH.interval = b.dataset.v; drawSheet(); }
+    else if (a === 'checkout') startCheckout(b);
+    else if (a === 'portal') openPortal(b);
+    else if (a === 'signout') signOut();
+    else if (a === 'to-upgrade') openSheet('upgrade');
+    else if (a === 'to-signin') openSheet('signin');
+    else if (a === 'preview-free') { S.previewFree = !S.previewFree; applyPlan(); drawSheet(); render(true); }
     else if (a === 'tip') { var w = b.parentNode, open = !w.classList.contains('open'); w.classList.toggle('open', open); b.setAttribute('aria-expanded', open); }
     else if (a === 'video') toast('Your how-to video will go here.');
     else if (a === 'print') window.print();
@@ -781,8 +973,7 @@
     }
   });
   $('#fileInput').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
-  function setPlan(p) { S.plan = p; try { localStorage.setItem('commish-plan', p); } catch (e) {} S.sel = null; render(); }
-  $('#planBtn').addEventListener('click', function () { setPlan(S.plan === 'pro' ? 'free' : 'pro'); });
+  $('#acctBtn').addEventListener('click', function () { openSheet(S.user ? 'account' : 'signin'); });
   $('#themeBtn').addEventListener('click', function () {
     var dark = document.documentElement.dataset.theme !== 'dark';
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -799,6 +990,8 @@
     if (SECTIONS.indexOf(r) > 0) setTimeout(function () { goSection(r, false); }, 30);
   });
   window.__commish = { S: S, data: data, makeDemo: makeDemo };
+  try { localStorage.removeItem('commish-plan'); } catch (e) {}
   render();
+  boot();
   (function () { var r = route(); if (SECTIONS.indexOf(r) > 0) setTimeout(function () { goSection(r, false); }, 30); })();
 })();
