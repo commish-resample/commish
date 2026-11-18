@@ -313,10 +313,17 @@
   // ---------- data access by plan ----------
   function goodFiles() { return S.files.filter(function (f) { return !f.error; }); }
   function latestFile() { return goodFiles().slice().sort(function (a, b) { return b.max - a.max; })[0]; }
+  var FREE_DAYS = 90;
   function data() {
     var g = goodFiles(); if (!g.length) return null;
-    var use = S.plan === 'pro' ? g : [latestFile()];
-    var m = merge(use); var A = analyse(m.rows); A.dupes = m.dupes; A.files = use; A.allFiles = g; return A;
+    var m = merge(g), rows = m.rows, hidden = 0, winStart = null;
+    if (S.plan !== 'pro') {
+      var maxT = Math.max.apply(null, rows.map(function (r) { return +r.odate; }));
+      winStart = new Date(maxT - (FREE_DAYS - 1) * DAY); winStart.setHours(0, 0, 0, 0);
+      var kept = rows.filter(function (r) { return r.odate >= winStart; });
+      hidden = rows.length - kept.length; rows = kept;
+    }
+    var A = analyse(rows); A.dupes = m.dupes; A.files = g; A.allFiles = g; A.hiddenRows = hidden; A.winStart = winStart; return A;
   }
 
   // ---------- view helpers ----------
@@ -380,7 +387,7 @@
     var line = m.dupes
       ? num(m.dupes) + ' duplicate order' + (m.dupes === 1 ? '' : 's') + ' removed across your ' + g.length + ' exports. ' + num(m.rows.length) + ' unique orders, each counted once.'
       : 'No overlap between your ' + g.length + ' exports. ' + num(m.rows.length) + ' unique orders, each counted once.';
-    if (S.plan !== 'pro') line += ' Free shows your most recent export; Pro merges them all.';
+    if (S.plan !== 'pro') line += ' Free shows your latest 90 days; Pro shows everything you add.';
     return '<div class="alert t a-pop" style="display:flex;gap:10px;align-items:flex-start;margin-top:4px">' + tick + '<span>' + line + '</span></div>';
   }
   function viewUpload() {
@@ -442,7 +449,8 @@
       out += '</div>';
       out += challengeCard(A, true);
     } else {
-      out += '<section class="a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + ' (one export)</p>' + top3(A) + '</section>';
+      out += '<section class="a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + ' (latest 90 days)</p>' + top3(A) + '</section>';
+      if (A.hiddenRows) out += '<div class="alert t a-in"><b>' + num(A.hiddenRows) + ' older orders are hidden.</b> Free shows your latest 90 days. <button class="linkish" data-action="unlock" style="font-size:inherit;min-height:0">Unlock Pro</button> to see everything you\'ve added.</div>';
       out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>';
       var wmax = Math.max.apply(null, A.weeks.map(function (w) { return w.paid + w.owed; })) || 1;
       var ws = S.wsel == null || S.wsel >= A.weeks.length ? A.weeks.length - 1 : S.wsel, wk = A.weeks[ws];
@@ -460,7 +468,7 @@
         '<p class="sub" style="margin-top:12px">You average ' + gbp(A.perDay) + ' of commission a day, paid and pending.</p></div>';
       var all = data_all(); var have = {};
       all.forEach(function (f) { var c = new Date(f.min.getFullYear(), f.min.getMonth(), 1); while (c <= f.max) { have[c.getFullYear() * 12 + c.getMonth()] = 1; c = new Date(c.getFullYear(), c.getMonth() + 1, 1); } });
-      var latest = latestFile(); var lk = latest.min.getFullYear() * 12 + latest.min.getMonth(), hk = latest.max.getFullYear() * 12 + latest.max.getMonth();
+      var latest = { min: A.min, max: A.max }; var lk = latest.min.getFullYear() * 12 + latest.min.getMonth(), hk = latest.max.getFullYear() * 12 + latest.max.getMonth();
       var inR = function (mm) { var k = mm.d.getFullYear() * 12 + mm.d.getMonth(); return k >= lk && k <= hk; };
       var covered = A.months.filter(inR), nCov = covered.length, soFar = A.months.filter(function (x) { return !x.future; }).length;
       var mtop = Math.max.apply(null, covered.map(function (x) { return x.paid + x.owed; })) || 1;
@@ -468,7 +476,7 @@
       var bestCov = covered.slice().sort(function (a2, b2) { return (b2.paid + b2.owed) - (a2.paid + a2.owed); })[0];
       var yearPace = A.perDay * 365;
       out += '<div class="card t a-in" style="animation-delay:360ms"><div class="row-head"><h2>Your ' + A.year + ' so far</h2><span class="badge t">' + nCov + ' of ' + soFar + ' months</span></div>' +
-        '<p class="sub">This export covers ' + range(latest.min, latest.max) + '. Here\'s what each month earned, paid and pending.</p>' +
+        '<p class="sub">Free covers your latest 90 days, ' + range(latest.min, latest.max) + '. Here\'s what each month earned, paid and pending.</p>' +
         '<div class="yearmap">' + A.months.map(function (mm, i) {
           var have = inR(mm), v = mm.paid + mm.owed, h = have ? Math.max(8, v / mtop * 86) : 0;
           if (mm.future) return '<span class="ym" style="opacity:.4"><i class="ym-q" style="border-style:dotted">&nbsp;</i><b>' + MONTHS[mm.d.getMonth()].slice(0, 1) + '</b></span>';
@@ -520,7 +528,7 @@
   function tilePer(A, dl) { return '<div class="tile ink t a-in" style="animation-delay:' + dl + 'ms"><p>Commission per order (average)</p><b>' + gbp2(A.perOrder) + '</b></div>'; }
 
   function viewShops(A) {
-    if (S.plan !== 'pro') return '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish in this export.</p></section>' +
+    if (S.plan !== 'pro') return '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish in your latest 90 days.</p></section>' +
       locked('<h2>All shops</h2>' + A.shops.slice(0, 6).map(function (s) { return '<div class="list-row"><b>' + esc(s.name) + '</b> ' + gbp(s.earned) + '</div>'; }).join(''), 'Which shops lose your orders', 'Lost rates, UK vs overseas sellers and new shops');
     var list = A.shops.slice().sort(function (a, b) { return S.shopSort === 'lost' ? b.lost - a.lost || b.lostRate - a.lostRate : b.earned - a.earned; }).slice(0, 25);
     var out = '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish' + (A.newShops.length ? '. ' + A.newShops.length + ' are new this month.' : '.') + '</p></section>';
@@ -542,7 +550,7 @@
   }
 
   function viewVideos(A) {
-    if (S.plan !== 'pro') return '<section class="a-in"><h1>Your videos</h1><p class="sub">' + A.nContent + ' videos and Lives earned you commish in this export.</p></section>' +
+    if (S.plan !== 'pro') return '<section class="a-in"><h1>Your videos</h1><p class="sub">' + A.nContent + ' videos and Lives earned you commish in your latest 90 days.</p></section>' +
       locked('<h2>When your top earners went up</h2><div style="height:180px"></div>', Math.round(A.evergreen) + '% came from older videos', 'Evergreen videos, posting times and Lives');
     var cols = ['#FF6FB5', '#FFFFFF', '#FFE45C', '#3DDC97', '#B9A6FF', '#0B0716'];
     var out = '<section class="a-in"><h1>Your videos</h1><p class="sub">' + A.nVideos + ' videos and ' + A.nLives + ' Lives earned you commish.</p></section><div class="grid2">';
