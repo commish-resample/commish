@@ -234,7 +234,8 @@
     // shops
     var shopMap = new Map();
     rows.forEach(function (r) {
-      var s = shopMap.get(r.shop); if (!s) { s = { name: r.shop, code: r.shopCode, n: 0, lostN: 0, paid: 0, owed: 0, lost: 0, first: r.odate, prods: {} }; shopMap.set(r.shop, s); }
+      var s = shopMap.get(r.shop); if (!s) { s = { name: r.shop, code: r.shopCode, n: 0, lostN: 0, paid: 0, owed: 0, lost: 0, first: r.odate, prods: {}, items: 0, lostItems: 0 }; shopMap.set(r.shop, s); }
+      s.items += r.items || 0; if (r.status === 'Ineligible') s.lostItems += r.items || 0;
       s.prods[r.product] = (s.prods[r.product] || 0) + earned(r) + (r.status === 'Ineligible' ? 0 : 0.0001);
       s.n++; if (r.odate < s.first) s.first = r.odate;
       if (r.status === 'Settled') s.paid += earned(r); else if (r.status === 'Pending') s.owed += r.est; else { s.lost += r.est; s.lostN++; }
@@ -487,12 +488,13 @@
   function viewShops(A) {
     if (S.plan !== 'pro') return '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish in this export.</p></section>' +
       locked('<h2>All shops</h2>' + A.shops.slice(0, 6).map(function (s) { return '<div class="list-row"><b>' + esc(s.name) + '</b> ' + gbp(s.earned) + '</div>'; }).join(''), 'Which shops lose your orders', 'Lost rates, UK vs overseas sellers and new shops');
-    var list = A.shops.slice().sort(function (a, b) { return S.shopSort === 'lost' ? b.lostRate - a.lostRate || b.n - a.n : b.earned - a.earned; }).slice(0, 25);
+    var list = A.shops.slice().sort(function (a, b) { return S.shopSort === 'lost' ? b.lost - a.lost || b.lostRate - a.lostRate : b.earned - a.earned; }).slice(0, 25);
     var out = '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish' + (A.newShops.length ? '. ' + A.newShops.length + ' are new this month.' : '.') + '</p></section>';
     out += '<div class="seg t a-in" role="group" aria-label="Sort shops by" style="max-width:420px"><button data-action="sort" data-v="earned" aria-pressed="' + (S.shopSort !== 'lost') + '">Most earned</button><button data-action="sort" data-v="lost" aria-pressed="' + (S.shopSort === 'lost') + '">Most lost</button></div>';
     out += '<div class="grid2"><div class="card big t a-in" style="animation-delay:120ms">' + list.map(function (s, i) {
       return '<div class="list-row"><div style="display:flex;justify-content:space-between;gap:8px;font-size:16px;font-weight:800"><span>' + esc(s.name) + '</span><span>' + gbp(s.earned) + '</span></div>' + topLine(s) + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px">' + (s.code ? '<span class="badge t' + (s.overseas ? ' pink' : '') + '">' + (s.overseas ? 'Overseas seller' : 'UK seller') + '</span>' : '<span></span>') +
-        '<span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><span class="bar-track t" style="width:70px;height:10px"><span class="bar-fill a-barx" style="display:block;width:' + Math.min(100, s.lostRate * 100) + '%;background:var(--ink);animation-delay:' + (300 + i * 50) + 'ms"></span></span>' + Math.round(s.lostRate * 100) + '% lost</span></div></div>';
+        '<span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><span class="bar-track t" style="width:70px;height:10px"><span class="bar-fill a-barx" style="display:block;width:' + Math.min(100, s.lostRate * 100) + '%;background:var(--ink);animation-delay:' + (300 + i * 50) + 'ms"></span></span>' + Math.round(s.lostRate * 100) + '% lost</span></div>' +
+        (s.lostN ? '<p class="topline" style="text-align:right">' + num(s.lostItems || s.lostN) + ' of ' + num(s.items || s.n) + ' items lost, ' + gbp(s.lost) + ' commission</p>' : '') + '</div>';
     }).join('') + '</div><div style="display:flex;flex-direction:column;gap:16px">';
     if (A.ukLost != null && A.osLost != null) {
       var mx = Math.max(A.ukLost, A.osLost, 0.01);
