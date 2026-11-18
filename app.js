@@ -579,7 +579,7 @@
     }
     return '<div class="card t a-in" style="animation-delay:380ms">' + head + '<div style="margin-top:8px">' + A.challenge.slice(0, 8).map(function (c, i) {
       return '<div class="list-row"><div style="display:flex;justify-content:space-between;gap:10px;font-size:15px;font-weight:700"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(shortName(c.product)) + '</span><b>' + gbp(c.est) + '</b></div>' +
-        '<p class="topline">' + esc(c.shop) + ', ' + num(c.n) + ' order' + (c.n === 1 ? '' : 's') + ', ' + range(c.first, c.last) + '</p>' +
+        '<p class="topline">' + esc(c.shop) + ', ' + range(c.first, c.last) + '</p><p class="topline">' + num(c.n) + ' order' + (c.n === 1 ? '' : 's') + ' with no commission and nothing returned</p>' +
         '<button class="linkish" data-action="copyids" data-i="' + i + '" style="font-size:14px;min-height:36px">Copy order IDs for TikTok support</button></div>';
     }).join('') + (A.challenge.length > 8 ? '<p class="sub">Plus ' + (A.challenge.length - 8) + ' smaller ones.</p>' : '') + '</div></div>';
   }
