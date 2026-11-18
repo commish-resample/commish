@@ -320,3 +320,5 @@ a.btn.wide{display:flex;align-items:center;justify-content:center;text-decoratio
   .logo .coin{width:18px;height:18px;font-size:11px}
   .plan{padding:0 10px;font-size:12px}
 }
+#adminView{display:flex;flex-direction:column;gap:16px}
+#adminView .alert{margin:0}
