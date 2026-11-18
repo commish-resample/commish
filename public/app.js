@@ -759,7 +759,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:42</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:47</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
@@ -858,10 +858,10 @@
   function acctButton() {
     var b = $('#acctBtn'); if (!b) return;
     b.hidden = !S.user && !(S.ready && S.ready.signin);
-    $('#acctLabel').textContent = !S.user ? 'Sign in' : (S.user.plan === 'pro' ? 'Pro' : 'Free');
+    $('#acctLabel').textContent = !S.user ? 'Sign in or join' : (S.user.plan === 'pro' ? 'Pro' : 'Free');
     b.setAttribute('aria-pressed', S.plan === 'pro');
     b.classList.toggle('out', !S.user);
-    b.setAttribute('aria-label', !S.user ? 'Sign in' : 'Your account, ' + (S.user.plan === 'pro' ? 'Pro' : 'Free') + ' plan');
+    b.setAttribute('aria-label', !S.user ? 'Sign in or join' : 'Your account, ' + (S.user.plan === 'pro' ? 'Pro' : 'Free') + ' plan');
   }
 
   function loadMe() {
@@ -922,8 +922,8 @@
         '<p class="sub">We\'ve sent a sign-in link to <b>' + esc(SH.sent) + '</b>. Open it on this device. It works once and lasts 20 minutes.</p>' +
         (SH.devLink ? '<p class="sub"><a href="' + esc(SH.devLink) + '">Test link (only shown while testing)</a></p>' : '') +
         '<p class="sub small">Nothing there? Check your spam folder, or <button class="linkish" data-action="to-signin">try again</button>.</p>';
-      return '<h2 id="sheetTitle">' + (SH.reason === 'unlock' ? 'Sign in to unlock Pro' : 'Sign in to Commish') + '</h2>' +
-        '<p class="sub">No password needed. Pop in your email and we\'ll send you a link.</p>' +
+      return '<h2 id="sheetTitle">' + (SH.reason === 'unlock' ? 'Sign in or join to unlock Pro' : 'Sign in or create your account') + '</h2>' +
+        '<p class="sub">New here? Just pop in your email. We\'ll send you a link, and your account is set up when you click it. No password needed.</p>' +
         '<form id="signinForm" class="sheet-form" novalidate><label for="email">Email</label>' +
         '<input id="email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>' + err +
         '<button class="btn" type="submit"' + (SH.busy ? ' disabled' : '') + '>' + (SH.busy ? 'Sending…' : 'Email me a link') + '</button></form>' +

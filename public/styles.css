@@ -37,7 +37,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .knob{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1B1340;transition:transform .45s cubic-bezier(.34,1.7,.64,1),background-color .45s ease}
 [data-theme="dark"] .knob{background:#FFC861;transform:translateX(22px)}
 .knob .moon{display:none}[data-theme="dark"] .knob .moon{display:block}[data-theme="dark"] .knob .sun{display:none}
-.plan{min-height:44px;padding:0 14px;border-radius:22px;border:2.5px solid var(--line);background:var(--card);font-size:14px;font-weight:800;display:inline-flex;align-items:center;gap:8px}
+.plan{min-height:44px;padding:0 14px;white-space:nowrap;border-radius:22px;border:2.5px solid var(--line);background:var(--card);font-size:14px;font-weight:800;display:inline-flex;align-items:center;gap:8px}
 .plan .dot{width:10px;height:10px;border-radius:50%;background:var(--owed);box-shadow:inset 0 0 0 1.5px var(--line)}
 .plan[aria-pressed="true"] .dot{background:#3DDC97}
 main{width:100%;max-width:1240px;margin:0 auto;padding:8px 20px 120px;display:flex;flex-direction:column;gap:16px}
@@ -306,3 +306,17 @@ a.btn.wide{display:flex;align-items:center;justify-content:center;text-decoratio
 @keyframes trendIn{from{opacity:0}to{opacity:1}}
 .key.k-trend{background:none;border:0;border-top:3px dashed var(--ink);height:0;border-radius:0;width:16px;align-self:center}
 
+
+/* keep logo and buttons on one line on phones */
+@media (max-width:440px){
+  .top{flex-wrap:nowrap;gap:8px;padding-left:16px;padding-right:16px}
+  .top .tools{gap:6px;flex-shrink:0}
+  .logo{font-size:24px}
+  .logo .coin{width:21px;height:21px;font-size:13px;box-shadow:inset 0 0 0 2.5px var(--coinRing)}
+  .plan{padding:0 12px;font-size:13px}
+}
+@media (max-width:350px){
+  .logo{font-size:20px}
+  .logo .coin{width:18px;height:18px;font-size:11px}
+  .plan{padding:0 10px;font-size:12px}
+}
