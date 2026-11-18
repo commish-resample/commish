@@ -259,3 +259,10 @@ a,button{-webkit-tap-highlight-color:transparent}
 .acct dd{margin:0;overflow-wrap:anywhere}
 html.sheet-open{overflow:hidden}
 @media (prefers-reduced-motion:reduce){.sheet,.sheet-bg,.sheet-ic,.opt{animation:none!important;transition:none!important}}
+
+/* Free: Pro preview section */
+.pro-head{margin-top:8px}
+.pro-pill{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--accentInk);border-radius:14px;padding:4px 12px;font-size:14px;font-weight:800;margin-bottom:10px}
+.lockgrid{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){.lockgrid{grid-template-columns:1fr 1fr}}
+.lockgrid>.card{min-width:0;min-height:230px}

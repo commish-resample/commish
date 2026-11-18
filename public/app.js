@@ -20,7 +20,8 @@
     shops: '<path d="M4 9h16l-1.5 10h-13z"/><path d="M8 9a4 4 0 0 1 8 0"/>',
     videos: '<rect x="6" y="3" width="12" height="18" rx="3"/><path d="M11 10l3 2-3 2z"/>',
     tax: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
-    upload: '<path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/>'
+    upload: '<path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/>',
+    pro: '<rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'
   };
   var svg = function (name, size) { return '<svg width="' + (size || 22) + '" height="' + (size || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[name] + '</svg>'; };
 
@@ -461,8 +462,7 @@
       out += challengeCard(A, true);
     } else {
       out += '<section class="a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + ' (latest 90 days)</p>' + top3(A) + '</section>';
-      if (A.hiddenRows) out += '<div class="alert t a-in"><b>' + num(A.hiddenRows) + ' older orders are hidden.</b> Free shows your latest 90 days. <button class="linkish" data-action="unlock" style="font-size:inherit;min-height:0">Unlock Pro</button> to see everything you\'ve added.</div>';
-      out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>' + insightsCard(A, S.plan === 'pro');
+      out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>' + insightsCard(A, 'free');
       var wmax = Math.max.apply(null, A.weeks.map(function (w) { return w.paid + w.owed; })) || 1;
       var ws = S.wsel == null || S.wsel >= A.weeks.length ? A.weeks.length - 1 : S.wsel, wk = A.weeks[ws];
       var wlab = function (w) { return new Date(w.k).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
@@ -499,11 +499,7 @@
         '<div class="tiles" style="margin-top:14px">' +
         '<div class="tile t"><p>Best month here</p><b>' + MONTHS[bestCov.d.getMonth()] + '</b><small>' + gbp(bestCov.paid + bestCov.owed) + ' paid and pending</small></div>' +
         '<div class="tile pink t"><p>Your yearly pace</p><b>' + kfmt(yearPace) + '</b><small>If you keep earning ' + gbp(A.perDay) + ' a day</small></div></div>' +
-        '<p class="sub" style="margin-top:12px">' + (soFar - nCov) + ' months of ' + A.year + ' are still a mystery. Was ' + MONTHS[bestCov.d.getMonth()] + ' your record? <button class="linkish" data-action="unlock" style="font-size:inherit;min-height:0">Unlock Pro</button> to merge older exports and find out.</p></div></div>';
-      var tease = A.months.filter(function (x) { return !x.current && !x.future; }).filter(function (x) { return x.owed > 20; }).sort(function (a, b2) { return b2.owed - a.owed; })[0];
-      out += locked('<h2>Your year</h2><div style="height:12px"></div>' + yearChart(A, 120, false), tease ? gbp(tease.owed) + ' is still pending from ' + MONTHS[tease.d.getMonth()] : 'Your whole year in one view', 'See every month of your year with Pro');
-      out += challengeCard(A, false);
-      out += nudge(A);
+        (soFar - nCov > 0 ? '<p class="sub" style="margin-top:12px">' + (soFar - nCov) + ' months of ' + A.year + ' are still a mystery. Was ' + MONTHS[bestCov.d.getMonth()] + ' your record?</p>' : '') + '</div></div>';
     }
     out += '<div class="card t a-in" style="animation-delay:460ms"><div class="row-head"><h2>Top shops</h2>' + (pro ? '<a href="#shops" style="font-weight:600">See all</a>' : '') + '</div><p class="sub">The shops that have earned you the most commission, paid and pending. Returned and cancelled orders don\'t count.</p><div style="margin-top:8px">' +
       A.shops.slice(0, 5).map(function (s, i) { return '<div class="list-row"><div style="display:flex;justify-content:space-between;gap:10px;font-size:15px;font-weight:600"><span>' + esc(s.name) + '</span><b>' + gbp(s.earned) + '</b></div>' + topLine(s) + '<div class="bar-track t" style="margin-top:6px"><div class="bar-fill a-barx" style="width:' + (s.earned / (A.shops[0].earned || 1) * 100) + '%;background:' + (i ? 'var(--owed)' : 'var(--paid)') + ';animation-delay:' + (600 + i * 90) + 'ms"></div></div></div>'; }).join('') + '</div></div>';
@@ -562,7 +558,8 @@
     };
     L = L.slice(0, 6);
     var head = '<div class="row-head"><h2>Insights</h2><span class="badge t">' + L.length + ' idea' + (L.length === 1 ? '' : 's') + '</span></div><p class="sub">Ideas to earn more, worked out from your own orders.</p>';
-    if (pro) return '<div class="card big t a-in" style="animation-delay:200ms">' + head + '<div class="ins-list">' + L.slice(0, 6).map(item).join('') + '</div></div>';
+    if (pro === true) return '<div class="card big t a-in" style="animation-delay:200ms">' + head + '<div class="ins-list">' + L.slice(0, 6).map(item).join('') + '</div></div>';
+    if (pro === 'free') return '<div class="card t a-in" style="animation-delay:200ms"><div class="row-head"><h2>Your top insight</h2></div><p class="sub">An idea to earn more, worked out from your own orders.</p><div class="ins-list">' + item(L[0], 0) + '</div></div>';
     return '<div class="card t a-in locked" style="animation-delay:200ms">' + head + '<div class="ins-list">' + item(L[0], 0) + '</div>' +
       (L.length > 1 ? '<div class="blur" aria-hidden="true"><div class="ins-list">' + L.slice(1, 3).map(function () { return '<div class="ins"><span class="ins-ic"></span><span><b>Another idea for you</b><span>Worked out from your own orders and videos.</span></span></div>'; }).join('') + '</div></div>' +
       '<div class="over" style="top:auto;height:46%"><button class="btn" data-action="unlock">Unlock ' + (L.length - 1) + ' more with Pro</button></div>' : '') + '</div>';
@@ -585,6 +582,21 @@
   function tileRate(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Real commission rate</p><b>' + A.effRate.toFixed(1) + '%</b><small>You earn ' + gbp2(A.effRate) + ' for every £100 of sales you drive</small></div>'; }
   function tilePer(A, dl) { return '<div class="tile ink t a-in" style="animation-delay:' + dl + 'ms"><p>Commission per order (average)</p><b>' + gbp2(A.perOrder) + '</b></div>'; }
 
+  function viewPro(A) {
+    var out = '<section class="a-in pro-head"><span class="pro-pill t">' + svg('pro', 16) + ' Pro</span><h1>More with Pro</h1>' +
+      '<p class="sub">Everything above is free and covers your latest 90 days. Here\'s what Pro adds, for £2.99 a month.</p>' +
+      (A.hiddenRows ? '<div class="alert t" style="margin-top:12px"><b>' + num(A.hiddenRows) + ' older orders</b> from your files are waiting. Pro merges every export into one history.</div>' : '') + '</section>';
+    var cards = [];
+    var L = insights(A).slice(0, 6);
+    if (L.length > 1) cards.push(locked('<h2>Insights</h2>' + '<div class="ins-list" style="margin-top:10px">' + [1, 2].map(function () { return '<div class="ins"><span class="ins-ic"></span><span><b>Another idea for you</b><span>Worked out from your own orders and videos.</span></span></div>'; }).join('') + '</div>', (L.length - 1) + ' more ideas to earn more', 'Every insight, refreshed as you add exports'));
+    var tease = A.months.filter(function (x) { return !x.current && !x.future; }).filter(function (x) { return x.owed > 20; }).sort(function (a, b2) { return b2.owed - a.owed; })[0];
+    cards.push(locked('<h2>Your year</h2><div style="height:12px"></div>' + yearChart(A, 120, false), tease ? gbp(tease.owed) + ' still pending from ' + MONTHS[tease.d.getMonth()] : 'Your whole year in one view', 'Every month, paid, pending and lost'));
+    if (A.nInel) { var top = A.challenge[0]; cards.push(locked('<h2>Worth checking</h2><div style="margin-top:10px">' + [1, 2, 3].map(function () { return '<div class="list-row"><b>Product name here</b><p class="topline">Shop name, 12 orders</p></div>'; }).join('') + '</div>', gbp(A.lostInel) + ' in orders worth chasing', top ? 'Biggest: ' + gbp(top.est) + ' on ' + esc(shortName(top.product)) : 'Lost orders to raise with TikTok')); }
+    cards.push(locked('<h2>All shops</h2>' + A.shops.slice(0, 5).map(function (s) { return '<div class="list-row"><b>' + esc(s.name) + '</b> ' + gbp(s.earned) + '</div>'; }).join(''), 'Which shops lose your orders', 'Lost rates, UK vs overseas sellers, new shops'));
+    cards.push(locked('<h2>Your videos</h2><div style="height:150px"></div>', Math.round(A.evergreen) + '% came from older videos', 'Best posting times, evergreen videos, Lives'));
+    cards.push(locked('<h2>Tax year</h2><div class="receipt" style="height:150px;margin-top:10px"></div>', 'Your tax year, sorted', 'UK tax year totals for your accountant'));
+    return out + '<div class="lockgrid">' + cards.join('') + '</div>' + nudge(A);
+  }
   function viewShops(A) {
     if (S.plan !== 'pro') return '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish in your latest 90 days.</p></section>' +
       locked('<h2>All shops</h2>' + A.shops.slice(0, 6).map(function (s) { return '<div class="list-row"><b>' + esc(s.name) + '</b> ' + gbp(s.earned) + '</div>'; }).join(''), 'Which shops lose your orders', 'Lost rates, UK vs overseas sellers and new shops');
@@ -656,10 +668,17 @@
   }
 
   // ---------- render & routing ----------
-  var ROUTES = ['upload', 'reveal', 'home', 'shops', 'videos', 'tax'];
-  function route() { var h = (location.hash || '').replace('#', ''); if (ROUTES.indexOf(h) < 0) h = goodFiles().length ? 'home' : 'upload'; if (h !== 'upload' && !goodFiles().length) h = 'upload'; return h; }
+  var ROUTES = ['upload', 'reveal', 'home', 'shops', 'videos', 'tax', 'pro'];
+  function route() {
+    var h = (location.hash || '').replace('#', ''); if (ROUTES.indexOf(h) < 0) h = goodFiles().length ? 'home' : 'upload';
+    if (h !== 'upload' && !goodFiles().length) h = 'upload';
+    if (S.plan === 'pro' && h === 'pro') h = 'home';
+    if (S.plan !== 'pro' && (h === 'shops' || h === 'videos' || h === 'tax')) h = 'pro';
+    return h;
+  }
   function navs(cur) {
-    var items = [['home', 'Home', 'home'], ['shops', 'Shops', 'shops'], ['videos', 'Videos', 'videos'], ['tax', 'Tax', 'tax'], ['upload', 'Files', 'upload']];
+    var items = S.plan === 'pro' ? [['home', 'Home', 'home'], ['shops', 'Shops', 'shops'], ['videos', 'Videos', 'videos'], ['tax', 'Tax', 'tax'], ['upload', 'Files', 'upload']]
+      : [['home', 'Home', 'home'], ['pro', 'Pro', 'pro'], ['upload', 'Files', 'upload']];
     var hasData = goodFiles().length > 0;
     $('#bottomnav').hidden = !hasData; $('#topnav').hidden = !hasData;
     if (!hasData) items = [];
@@ -686,11 +705,12 @@
     if (r === 'upload') { html = viewUpload(); dashShown = false; }
     else {
       var A = data();
-      var parts = { home: viewHome(A), shops: viewShops(A), videos: viewVideos(A), tax: viewTax(A) };
+      SECTIONS = S.plan === 'pro' ? ['home', 'shops', 'videos', 'tax'] : ['home', 'pro'];
+      var parts = S.plan === 'pro' ? { home: viewHome(A), shops: viewShops(A), videos: viewVideos(A), tax: viewTax(A) } : { home: viewHome(A), pro: viewPro(A) };
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br>Version 18 Nov, 16:00</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br>Version 18 Nov, 17:30</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
