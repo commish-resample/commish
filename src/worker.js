@@ -323,7 +323,11 @@ async function applySubscription(env, sub, userIdHint) {
   const interval = item && item.price && item.price.recurring ? item.price.recurring.interval : null;
   const periodEnd = sub.current_period_end || (item && item.current_period_end) || null;
   const userId = userIdHint || (sub.metadata && sub.metadata.user_id);
-  const fields = [active ? 'pro' : 'free', sub.customer, sub.id, sub.status, interval, periodEnd, sub.cancel_at_period_end ? 1 : 0];
+  // Newer Stripe API versions record a scheduled cancellation as cancel_at (a date)
+  // rather than cancel_at_period_end, so treat either as "ending".
+  const ending = !!(sub.cancel_at_period_end || sub.cancel_at) && active;
+  const endDate = ending && sub.cancel_at ? sub.cancel_at : periodEnd;
+  const fields = [active ? 'pro' : 'free', sub.customer, sub.id, sub.status, interval, endDate, ending ? 1 : 0];
   let res;
   if (userId) {
     res = await env.DB.prepare('UPDATE users SET plan=?, stripe_customer=?, stripe_sub=?, sub_status=?, sub_interval=?, period_end=?, cancel_at_end=? WHERE id=?')
@@ -341,8 +345,8 @@ async function webhook(req, env) {
   if (!ok) return json({ error: 'bad signature' }, 400);
   const event = JSON.parse(payload);
 
-  const seen = await env.DB.prepare('INSERT OR IGNORE INTO stripe_events (id, type, created_at) VALUES (?, ?, ?)').bind(event.id, event.type, now()).run();
-  if (!seen.meta.changes) return json({ received: true, duplicate: true });
+  // Log the event. Handling is safe to repeat, so resent events are processed again.
+  await env.DB.prepare('INSERT OR IGNORE INTO stripe_events (id, type, created_at) VALUES (?, ?, ?)').bind(event.id, event.type, now()).run();
 
   const obj = event.data.object;
   try {
@@ -360,7 +364,6 @@ async function webhook(req, env) {
     }
   } catch (e) {
     // Let Stripe retry.
-    await env.DB.prepare('DELETE FROM stripe_events WHERE id = ?').bind(event.id).run();
     console.error(e.message);
     return json({ error: 'try again' }, 500);
   }
