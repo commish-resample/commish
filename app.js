@@ -286,7 +286,13 @@
     A.evergreen = tot ? (bandVals[3] + bandVals[4] + bandVals[5]) / tot * 100 : 0;
     var C = new Map();
     ok.forEach(function (r) { if (!r.cid) return; var c = C.get(r.cid); if (!c) { c = { cid: r.cid, type: r.ctype, posted: r.posted, e: 0, n: 0, prods: {} }; C.set(r.cid, c); } c.e += earned(r); c.n++; c.prods[r.product] = (c.prods[r.product] || 0) + 1; });
+    var cut30 = new Date(+A.max - 30 * DAY);
+    ok.forEach(function (r) { var c = r.cid && C.get(r.cid); if (c && r.odate >= cut30) c.recent = (c.recent || 0) + earned(r); });
     var content = Array.from(C.values());
+    content.forEach(function (c) { c.top = Object.keys(c.prods).sort(function (x, y) { return c.prods[y] - c.prods[x]; })[0] || ''; });
+    A.content = content;
+    var lv = ok.filter(function (r) { return /live/i.test(r.ctype); }), vd = ok.filter(function (r) { return !/live/i.test(r.ctype); });
+    A.livePer = lv.length ? sum(lv, earned) / lv.length : 0; A.vidPer = vd.length ? sum(vd, earned) / vd.length : 0; A.nLiveOrders = lv.length;
     var allLives = content.filter(function (c) { return /live/i.test(c.type); }); A.nLives = allLives.length; A.lives = allLives.sort(function (a, b) { return b.e - a.e; }).slice(0, 5);
     var vids = content.filter(function (c) { return !/live/i.test(c.type) && c.posted; });
     var PH = []; for (var p2 = 0; p2 < 7; p2++) PH.push([[], [], [], [], []]);
@@ -424,7 +430,7 @@
     var out = '';
     if (pro) {
       out += '<section class="conf-wrap a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + '</p>' + top3(A) + conf(10, 150, 22) + '</section>';
-      out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>';
+      out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>' + insightsCard(A, S.plan === 'pro');
       var sel = S.sel == null ? A.curIdx : S.sel, m = A.months[sel];
       out += '<div class="card big t a-in" style="animation-delay:260ms"><div class="row-head"><h2>Your ' + A.year + '</h2><span style="font-size:13px;font-weight:600">Tap a month</span></div>' +
         (A.years.length > 1 ? '<div class="seg t" role="group" aria-label="Year" style="max-width:320px;margin-top:10px;grid-template-columns:repeat(' + Math.min(4, A.years.length) + ',minmax(0,1fr))">' + A.years.slice(-4).map(function (y) { return '<button data-action="year" data-v="' + y + '" aria-pressed="' + (y === A.year) + '">' + y + '</button>'; }).join('') + '</div>' : '') +
@@ -451,7 +457,7 @@
     } else {
       out += '<section class="a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + ' (latest 90 days)</p>' + top3(A) + '</section>';
       if (A.hiddenRows) out += '<div class="alert t a-in"><b>' + num(A.hiddenRows) + ' older orders are hidden.</b> Free shows your latest 90 days. <button class="linkish" data-action="unlock" style="font-size:inherit;min-height:0">Unlock Pro</button> to see everything you\'ve added.</div>';
-      out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>';
+      out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>' + insightsCard(A, S.plan === 'pro');
       var wmax = Math.max.apply(null, A.weeks.map(function (w) { return w.paid + w.owed; })) || 1;
       var ws = S.wsel == null || S.wsel >= A.weeks.length ? A.weeks.length - 1 : S.wsel, wk = A.weeks[ws];
       var wlab = function (w) { return new Date(w.k).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
@@ -509,6 +515,53 @@
   function tilePending(A, dl) { return '<div class="tile pink t a-in" style="animation-delay:' + dl + 'ms"><p>Pending payment</p><b>' + count(A.owed, 'gbp', dl) + '</b><small>Most settle within about ' + A.lagMed + ' days</small></div>'; }
   function tileLost(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Commission lost (returns/cancellations)</p><b>' + count(A.lost, 'gbp', dl) + '</b>' +
     (A.lost > 0 ? '<small>' + gbp(A.lostRet) + ' returned, ' + gbp(A.lostInel) + ' cancelled or ruled ineligible</small>' : '') + '</div>'; }
+  function insights(A) {
+    var L = [], day = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    var add = function (v, icon, title, text) { L.push({ v: v, icon: icon, title: title, text: text }); };
+    var shopOf = {}; A.shops.forEach(function (x) { shopOf[x.name] = x; });
+    var safe = function (shopName, product) { var sh = shopOf[shopName]; if (sh && sh.n >= 10 && sh.lostRate >= 0.2) return false; return !(A.challenge || []).some(function (c) { return c.product === product && c.n >= 10; }); };
+    (A.doubleDown || []).filter(function (x) { return safe(x.shop, x.p); }).slice(0, 2).forEach(function (x) {
+      if (x.per >= 5) add(x.per * 2, 'video', 'Make another video for ' + shortName(x.p), x.vids === 1 ? 'You\'ve only made one video about it, and it earned ' + gbp(x.per) + '. A follow-up is your easiest win.' : 'You\'ve only made ' + x.vids + ' videos about it, and they earned ' + gbp(x.per) + ' each. A follow-up is your easiest win.');
+    });
+    var old = (A.content || []).filter(function (c) { return c.posted && (A.max - c.posted) / DAY > 45 && (c.recent || 0) >= 10 && !/live/i.test(c.type); }).sort(function (a, b) { return b.recent - a.recent; })[0];
+    if (old) add(old.recent * 1.5, 'repeat', 'Your old video is still selling', 'A video from ' + fmtD(old.posted) + ' about ' + shortName(old.top) + ' earned ' + gbp(old.recent) + ' in the last 30 days. Try a part 2 or a fresh take on it.');
+    if (A.bestPost && A.bestPost.n >= 3) add(A.bestPost.avg, 'clock', 'Post on ' + day[A.bestPost.i] + ' ' + BANDS[A.bestPost.j], 'Your videos posted then average ' + gbp(A.bestPost.avg) + ' each, from ' + A.bestPost.n + ' videos. A pattern worth testing, not a promise.');
+    if (A.nLiveOrders >= 10 && A.livePer > A.vidPer * 1.3) add((A.livePer - A.vidPer) * 20, 'live', 'Go Live more often', 'A Live order earns you ' + gbp2(A.livePer) + ' on average, against ' + gbp2(A.vidPer) + ' from videos. Your buyers are busiest on ' + DAYS[A.buyBest[0]] + ' ' + BANDS[A.buyBest[1]] + '.');
+    var risky = A.shops.filter(function (x) { return x.n >= 15 && x.lostRate >= 0.25; }).sort(function (a, b) { return b.lost - a.lost; })[0];
+    if (risky) add(risky.lost, 'warn', 'Think twice about ' + risky.name, Math.round(risky.lostRate * 100) + '% of your orders from this shop were lost (' + gbp(risky.lost) + ' commission). Put your effort into shops that pay out.');
+    var ch = (A.challenge || []).filter(function (c) { return c.n >= 10; })[0];
+    if (ch) add(ch.est, 'flag', 'Ask TikTok about ' + shortName(ch.product), ch.n + ' orders earned nothing even though nothing was returned (' + gbp(ch.est) + '). Use "Worth checking" to copy the order IDs.');
+    if (A.stuck && A.stuck.length) add(A.stuckVal, 'clock', gbp(A.stuckVal) + ' stuck in pending', A.stuck.length + ' orders have been pending for over 30 days. Most of yours settle in about ' + A.lagMed + ' days, so chase these.');
+    var hi = A.rows.filter(function (r) { return r.status !== 'Ineligible' && parseFloat(r.rate) >= 15; }), lo = A.rows.filter(function (r) { return r.status !== 'Ineligible' && parseFloat(r.rate) > 0 && parseFloat(r.rate) <= 8; });
+    if (hi.length >= 20 && lo.length >= 20) {
+      var hp = hi.reduce(function (t, r) { return t + A.earned(r); }, 0) / hi.length, lp = lo.reduce(function (t, r) { return t + A.earned(r); }, 0) / lo.length;
+      if (lp > hp * 1.5) add((lp - hp) * 10, 'pound', 'Low rates can still pay best', 'Products at 8% or less earn you ' + gbp2(lp) + ' an order, against ' + gbp2(hp) + ' at 15% or more. Big-ticket items beat high percentages.');
+      else if (hp > lp * 1.2) add((hp - lp) * 10, 'pound', 'Lean into higher commission rates', 'Products at 15% or more earn you ' + gbp2(hp) + ' an order, against ' + gbp2(lp) + ' at 8% or less.');
+    }
+    if (A.lastFull && A.forecast && (A.lastFull.paid + A.lastFull.owed) > 0) {
+      var ch2 = (A.forecast / (A.lastFull.paid + A.lastFull.owed) - 1) * 100;
+      if (Math.abs(ch2) >= 10) add(Math.abs(A.forecast - A.lastFull.paid - A.lastFull.owed) / 3, ch2 > 0 ? 'up' : 'down', ch2 > 0 ? 'You\'re on track to beat last month' : 'This month is running behind', 'On track for ' + gbp(A.forecast) + ', ' + Math.abs(Math.round(ch2)) + '% ' + (ch2 > 0 ? 'up on' : 'down on') + ' ' + MONTHS[A.lastFull.d.getMonth()] + ' (' + gbp(A.lastFull.paid + A.lastFull.owed) + ').');
+    }
+    return L.sort(function (a, b) { return b.v - a.v; });
+  }
+  var INS_ICON = {
+    video: '<rect x="6" y="3" width="12" height="18" rx="3"/><path d="M11 10l3 2-3 2z"/>', repeat: '<path d="M4 12a8 8 0 0 1 14-5.3L20 9"/><path d="M20 4v5h-5"/><path d="M20 12a8 8 0 0 1-14 5.3L4 15"/><path d="M4 20v-5h5"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', live: '<circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4"/><path d="M17.7 6.3a8 8 0 0 1 0 11.4"/>',
+    warn: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/>', flag: '<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>', pound: '<path d="M16 6.5A4 4 0 0 0 9 9v9"/><path d="M6 13h7"/><path d="M6 18h11"/>',
+    up: '<path d="M4 17l6-6 4 4 6-7"/><path d="M14 8h6v6"/>', down: '<path d="M4 7l6 6 4-4 6 7"/><path d="M14 16h6v-6"/>'
+  };
+  function insightsCard(A, pro) {
+    var L = insights(A); if (!L.length) return '';
+    var item = function (x, i) {
+      return '<div class="ins a-in" style="animation-delay:' + (300 + i * 90) + 'ms"><span class="ins-ic t"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + INS_ICON[x.icon] + '</svg></span><span><b>' + esc(x.title) + '</b><span>' + esc(x.text) + '</span></span></div>';
+    };
+    L = L.slice(0, 6);
+    var head = '<div class="row-head"><h2>Insights</h2><span class="badge t">' + L.length + ' idea' + (L.length === 1 ? '' : 's') + '</span></div><p class="sub">Ideas to earn more, worked out from your own orders.</p>';
+    if (pro) return '<div class="card big t a-in" style="animation-delay:200ms">' + head + '<div class="ins-list">' + L.slice(0, 6).map(item).join('') + '</div></div>';
+    return '<div class="card t a-in locked" style="animation-delay:200ms">' + head + '<div class="ins-list">' + item(L[0], 0) + '</div>' +
+      (L.length > 1 ? '<div class="blur" aria-hidden="true"><div class="ins-list">' + L.slice(1, 3).map(function () { return '<div class="ins"><span class="ins-ic"></span><span><b>Another idea for you</b><span>Worked out from your own orders and videos.</span></span></div>'; }).join('') + '</div></div>' +
+      '<div class="over" style="top:auto;height:46%"><button class="btn" data-action="unlock">Unlock ' + (L.length - 1) + ' more with Pro</button></div>' : '') + '</div>';
+  }
   function challengeCard(A, pro) {
     if (!A.nInel) return '';
     var head = '<div class="row-head"><h2>Worth checking</h2><span class="badge pink t">' + gbp(A.lostInel) + '</span></div>' +
