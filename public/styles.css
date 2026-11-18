@@ -297,3 +297,5 @@ mark.todo{background:var(--pop);color:var(--ink);padding:0 4px;border-radius:4px
 .adm-table td:first-child{white-space:normal;overflow-wrap:anywhere;min-width:160px}
 a.btn.wide{display:flex;align-items:center;justify-content:center;text-decoration:none}
 @media (prefers-reduced-motion:reduce){.adm-bar{animation:none}}
+.more-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:14px}
+.more-row .btn{min-height:44px;padding:0 20px}

@@ -602,7 +602,12 @@
   function viewShops(A) {
     if (S.plan !== 'pro') return '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish in your latest 90 days.</p></section>' +
       locked('<h2>All shops</h2>' + A.shops.slice(0, 6).map(function (s) { return '<div class="list-row"><b>' + esc(s.name) + '</b> ' + gbp(s.earned) + '</div>'; }).join(''), 'Which shops lose your orders', 'Lost rates, UK vs overseas sellers and new shops');
-    var list = A.shops.slice().sort(function (a, b) { return S.shopSort === 'lost' ? b.lost - a.lost || b.lostRate - a.lostRate : b.earned - a.earned; }).slice(0, 25);
+    var sorted = A.shops.slice().sort(function (a, b) { return S.shopSort === 'lost' ? b.lost - a.lost || b.lostRate - a.lostRate : b.earned - a.earned; });
+    var shown = Math.min(sorted.length, S.shopsShown || 7), list = sorted.slice(0, shown), left = sorted.length - shown;
+    var moreBtns = (left > 0 || shown > 7) ? '<div class="more-row">' +
+      (left > 0 ? '<button class="btn ghost" data-action="shops-more">Show ' + Math.min(left, 20) + ' more</button>' : '') +
+      (shown > 7 ? '<button class="linkish" data-action="shops-less">Show fewer</button>' : '') +
+      '<span class="topline">Showing ' + shown + ' of ' + sorted.length + '</span></div>' : '';
     var out = '<section class="a-in"><h1>Your shops</h1><p class="sub">' + A.shops.length + ' shops paid you commish' + (A.newShops.length ? '. ' + A.newShops.length + ' are new this month.' : '.') + '</p></section>';
     out += '<div class="seg t a-in" role="group" aria-label="Sort shops by" style="max-width:420px"><button data-action="sort" data-v="earned" aria-pressed="' + (S.shopSort !== 'lost') + '">Most earned</button><button data-action="sort" data-v="lost" aria-pressed="' + (S.shopSort === 'lost') + '">Most lost</button></div>';
     out += '<div class="grid2"><div class="card big t a-in" style="animation-delay:120ms">' + list.map(function (s, i) {
@@ -610,7 +615,7 @@
         '<span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><span class="bar-track t" style="width:70px;height:10px"><span class="bar-fill a-barx" style="display:block;width:' + Math.min(100, s.lostRate * 100) + '%;background:var(--ink);animation-delay:' + (300 + i * 50) + 'ms"></span></span>' + Math.round(s.lostRate * 100) + '% lost</span></div>' +
         (s.lostN ? '<p class="topline" style="text-align:right">' + num(s.lostN) + ' of ' + num(s.n) + ' order' + (s.n === 1 ? '' : 's') + ' lost' + (s.lostItems && s.lostItems !== s.lostN ? ' (' + num(s.lostItems) + ' items)' : '') + ', ' + gbp(s.lost) + ' commission</p>' +
         '<p class="topline" style="text-align:right">' + num(s.retN) + ' returned, ' + num(s.inelN) + ' cancelled or ruled ineligible</p>' : '') + '</div>';
-    }).join('') + '</div><div style="display:flex;flex-direction:column;gap:16px">';
+    }).join('') + moreBtns + '</div><div style="display:flex;flex-direction:column;gap:16px">';
     if (A.ukLost != null && A.osLost != null) {
       var mx = Math.max(A.ukLost, A.osLost, 0.01);
       out += '<div class="card pop t a-in" style="animation-delay:220ms"><h2>' + (A.osLost > A.ukLost ? 'Overseas sellers lose more of your orders' : 'UK sellers lose more of your orders') + '</h2>' +
@@ -715,7 +720,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:20</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:30</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
@@ -1007,7 +1012,9 @@
     else if (a === 'month') { S.sel = +b.dataset.i; pickBar(b, '#mDetail', true); }
     else if (a === 'week') { S.wsel = +b.dataset.i; pickBar(b, '#wDetail', false); }
     else if (a === 'year') { S.year = +b.dataset.v; S.sel = null; render(true); }
-    else if (a === 'sort') { S.shopSort = b.dataset.v; render(true); }
+    else if (a === 'sort') { S.shopSort = b.dataset.v; S.shopsShown = 7; render(true); }
+    else if (a === 'shops-more') { S.shopsShown = (S.shopsShown || 7) + 20; render(true); }
+    else if (a === 'shops-less') { S.shopsShown = 7; render(true); var sh = $('#sec-shops'); if (sh) sh.scrollIntoView({ block: 'start' }); }
     else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(true); }
     else if (a === 'unlock' && !S.user && !(S.ready && S.ready.signin)) toast('Pro is coming very soon. Watch this space!');
     else if (a === 'unlock') openSheet(S.user ? (S.plan === 'pro' ? 'account' : 'upgrade') : 'signin', S.user ? null : 'unlock');
