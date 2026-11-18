@@ -426,7 +426,6 @@
       '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 11v6"/><circle cx="12" cy="7.2" r="0.6" fill="currentColor"/></svg></button>' +
       '<span class="tip" id="privTip" role="tooltip"><b>How your data stays private</b>' +
       '<span>Your export is opened by your own browser, on this device. It is never sent to Commish or anyone else.</span>' +
-      '<span>Commish has no database and no file storage, so there is nowhere for your orders to go.</span>' +
       '<span>Want proof? Open Commish, switch on aeroplane mode, then add your export. It still works, because nothing is sent over the internet.</span></span></span>';
   }
   function mergeNote(g) {
@@ -759,7 +758,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:47</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:50</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
