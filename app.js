@@ -692,7 +692,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br>Version 18 Nov, 09:05</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
