@@ -387,7 +387,20 @@
     if (tr) {
       var cx = function (i) { return ((i + 0.5) / A.months.length * 1200).toFixed(1); };
       var cy = function (v) { return (H + 6 - v / max * H).toFixed(1); };
-      out += '<svg class="trend" viewBox="0 0 1200 ' + (H + 6) + '" preserveAspectRatio="none" aria-hidden="true"><line x1="' + cx(tr.i0) + '" y1="' + cy(tr.y0) + '" x2="' + cx(tr.i1) + '" y2="' + cy(tr.y1) + '" vector-effect="non-scaling-stroke"/></svg>';
+      var x0 = cx(tr.i0), y0 = cy(tr.y0), x1 = cx(tr.i1), y1 = cy(tr.y1);
+      // The line "shoots" from the first month to now: a clip reveals it left to right, led by a glowing dot.
+      var still = reduceMotion || document.documentElement.classList.contains('quiet');
+      var dur = '1.1s', begin = '1.05s';
+      out += '<svg class="trend" viewBox="0 0 1200 ' + (H + 6) + '" preserveAspectRatio="none" aria-hidden="true">' +
+        (still ? '' : '<defs><clipPath id="trClip"><rect x="0" y="-20" height="' + (H + 46) + '" width="' + x0 + '"><animate attributeName="width" from="' + x0 + '" to="' + (+x1 + 8) + '" dur="' + dur + '" begin="' + begin + '" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.2 1"/></rect></clipPath></defs>') +
+        '<line' + (still ? '' : ' clip-path="url(#trClip)"') + ' x1="' + x0 + '" y1="' + y0 + '" x2="' + x1 + '" y2="' + y1 + '" vector-effect="non-scaling-stroke"/>' +
+        (still ? '' : '<line class="trend-head" x1="' + x0 + '" y1="' + y0 + '" x2="' + x0 + '" y2="' + y0 + '" vector-effect="non-scaling-stroke">' +
+          '<animate attributeName="x1" from="' + x0 + '" to="' + x1 + '" dur="' + dur + '" begin="' + begin + '" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.2 1"/>' +
+          '<animate attributeName="y1" from="' + y0 + '" to="' + y1 + '" dur="' + dur + '" begin="' + begin + '" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.2 1"/>' +
+          '<animate attributeName="x2" from="' + x0 + '" to="' + x1 + '" dur="' + dur + '" begin="' + begin + '" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.2 1"/>' +
+          '<animate attributeName="y2" from="' + y0 + '" to="' + y1 + '" dur="' + dur + '" begin="' + begin + '" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.2 1"/>' +
+          '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.8;1" dur="1.4s" begin="' + begin + '" fill="freeze"/></line>') +
+        '</svg>';
     }
     A.months.forEach(function (m, i) {
       var name = MONTHS[m.d.getMonth()];
@@ -746,7 +759,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:40</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:50</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
