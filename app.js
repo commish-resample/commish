@@ -276,6 +276,7 @@
     // forecast this month
     var mNow = A.curMonth, dayOfMonth = A.max.getDate(), dim = new Date(A.max.getFullYear(), A.max.getMonth() + 1, 0).getDate();
     A.forecast = (mNow.paid + mNow.owed) / dayOfMonth * dim;
+    A.fc = { soFar: mNow.paid + mNow.owed, days: dayOfMonth, dim: dim, perDay: (mNow.paid + mNow.owed) / dayOfMonth, month: MONTHS[A.max.getMonth()] };
 
     // content
     var bands = [['Same day', 0, 1], ['1-7 days', 1, 8], ['8-30 days', 8, 31], ['1-3 months', 31, 91], ['3-12 months', 91, 366], ['1 year+', 366, 1e9]];
@@ -422,7 +423,7 @@
         (A.years.length > 1 ? '<div class="seg t" role="group" aria-label="Year" style="max-width:320px;margin-top:10px;grid-template-columns:repeat(' + Math.min(4, A.years.length) + ',minmax(0,1fr))">' + A.years.slice(-4).map(function (y) { return '<button data-action="year" data-v="' + y + '" aria-pressed="' + (y === A.year) + '">' + y + '</button>'; }).join('') + '</div>' : '') +
         '<div class="legend"><span><i class="key k-paid"></i>Paid</span><span><i class="key k-owed"></i>Pending payment</span><span><i class="key k-lost"></i>Lost</span></div>' + yearChart(A, 166, true) +
         '<div class="alert t" id="mDetail" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><span data-t style="font-size:18px;font-weight:800">' + MONTHS[m.d.getMonth()] + ' ' + m.d.getFullYear() + '</span><span style="text-align:right"><span data-l1>' + gbp(m.paid) + ' paid</span><br><span data-l2>' + gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost</span></span></div>';
-      if (A.year === A.max.getFullYear()) out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission.</p>';
+      if (A.year === A.max.getFullYear()) out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission (' + gbp(A.fc.soFar) + ' paid and pending in the first ' + A.fc.days + ' day' + (A.fc.days === 1 ? '' : 's') + ' of ' + A.fc.month + ', about ' + gbp(A.fc.perDay) + ' a day, multiplied by ' + A.fc.dim + ' days).</p>';
       var owedMonths = A.months.filter(function (x) { return x.owed > 0.5; });
       if (owedMonths.length) out += '<p class="sub">Still pending: ' + owedMonths.map(function (x) { return MONTHS[x.d.getMonth()] + ' ' + gbp(x.owed); }).join(', ') + '.</p>';
       var empty = A.months.filter(function (x) { return !x.n && !x.future; }).length;
