@@ -494,7 +494,7 @@
     out += '<div class="grid2"><div class="card big t a-in" style="animation-delay:120ms">' + list.map(function (s, i) {
       return '<div class="list-row"><div style="display:flex;justify-content:space-between;gap:8px;font-size:16px;font-weight:800"><span>' + esc(s.name) + '</span><span>' + gbp(s.earned) + '</span></div>' + topLine(s) + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px">' + (s.code ? '<span class="badge t' + (s.overseas ? ' pink' : '') + '">' + (s.overseas ? 'Overseas seller' : 'UK seller') + '</span>' : '<span></span>') +
         '<span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><span class="bar-track t" style="width:70px;height:10px"><span class="bar-fill a-barx" style="display:block;width:' + Math.min(100, s.lostRate * 100) + '%;background:var(--ink);animation-delay:' + (300 + i * 50) + 'ms"></span></span>' + Math.round(s.lostRate * 100) + '% lost</span></div>' +
-        (s.lostN ? '<p class="topline" style="text-align:right">' + num(s.lostItems || s.lostN) + ' of ' + num(s.items || s.n) + ' items lost, ' + gbp(s.lost) + ' commission</p>' : '') + '</div>';
+        (s.lostN ? '<p class="topline" style="text-align:right">' + num(s.lostN) + ' of ' + num(s.n) + ' order' + (s.n === 1 ? '' : 's') + ' lost' + (s.lostItems && s.lostItems !== s.lostN ? ' (' + num(s.lostItems) + ' items)' : '') + ', ' + gbp(s.lost) + ' commission</p>' : '') + '</div>';
     }).join('') + '</div><div style="display:flex;flex-direction:column;gap:16px">';
     if (A.ukLost != null && A.osLost != null) {
       var mx = Math.max(A.ukLost, A.osLost, 0.01);
@@ -528,7 +528,7 @@
   }
 
   function viewTax(A) {
-    if (S.plan !== 'pro') return '<section class="a-in"><h1>Tax year</h1><p class="sub">Your paid commish, 6 April to 5 April, ready for Self Assessment.</p></section>' +
+    if (S.plan !== 'pro') return '<section class="a-in"><h1>Tax year</h1><p class="sub">Commission settled into your TikTok balance, 6 April to 5 April.</p></section>' +
       locked('<div class="slot"></div><div class="receipt" style="height:260px"></div>', 'Your tax year, sorted', 'Totals by UK tax year, ready for your accountant');
     if (!A.taxYears.length) return '<section class="a-in"><h1>Tax year</h1><p class="sub">No settled orders yet, so nothing to total up.</p></section>';
     var yr = S.taxYear != null ? S.taxYear : A.taxYears[0].y;
@@ -541,11 +541,11 @@
     var bestM = Object.keys(T.months).sort(function (a, b) { return T.months[b] - T.months[a]; })[0];
     var owedLine = current ? '<div class="line"><span>Pending payment, counts when paid</span><b>' + gbp(A.owed) + '</b></div>' : '';
     var note = complete ? (current ? 'Covers this tax year so far.' : 'This tax year is fully covered by your exports.') : 'Your exports start ' + fmtD(coveredFrom) + ', so this year is only partly covered. Add older exports to complete it.';
-    var out = '<section class="a-in"><h1>Tax year</h1><p class="sub">Your paid commish, by the date TikTok settled it.</p></section>';
+    var out = '<section class="a-in"><h1>Tax year</h1><p class="sub">Commission settled into your TikTok balance, grouped by the date TikTok settled it. Withdrawals to your bank are not in the orders export, so they are not counted here.</p></section>';
     out += '<div class="seg t a-in" role="group" aria-label="Tax year" style="max-width:420px;grid-template-columns:repeat(' + Math.min(3, A.taxYears.length) + ',minmax(0,1fr))">' + A.taxYears.slice(0, 3).map(function (t) { return '<button data-action="taxyear" data-v="' + t.y + '" aria-pressed="' + (t.y === T.y) + '">' + label(t.y) + (t.y === A.taxNow ? ' so far' : '') + '</button>'; }).join('') + '</div>';
     out += '<div style="max-width:560px;width:100%"><div style="overflow:hidden;padding-top:2px"><div class="slot t"></div><div class="receipt a-print t" id="receipt">' +
       '<p style="margin:0;text-align:center;font-size:15px;font-weight:600">6 Apr ' + T.y + ' to ' + (current ? fmtD(A.max) : '5 Apr ' + (T.y + 1)) + '</p>' +
-      '<p style="margin:14px 0 4px;font-size:15px;font-weight:600">Paid to you</p><p style="margin:0;font-size:56px;font-weight:800;letter-spacing:-.05em;line-height:1;color:var(--hero)">' + count(T.paid, 'gbp', 600) + '</p><hr>' +
+      '<p style="margin:14px 0 4px;font-size:15px;font-weight:600">Settled into your TikTok balance</p><p style="margin:0;font-size:56px;font-weight:800;letter-spacing:-.05em;line-height:1;color:var(--hero)">' + count(T.paid, 'gbp', 600) + '</p><hr>' +
       '<div class="line"><span>Settled orders</span><b>' + num(T.n) + '</b></div><div class="line"><span>Monthly average</span><b>' + gbp(T.paid / monthsCount) + '</b></div>' +
       (bestM != null ? '<div class="line"><span>Best month</span><b>' + MONTHS[bestM] + ', ' + gbp(T.months[bestM]) + '</b></div>' : '') + owedLine +
       '<hr><p class="sub" style="margin:0">' + note + '</p><span class="stamp a-stamp t' + (complete ? '' : ' ink') + '" style="animation-delay:1300ms">' + (complete ? 'Sorted' : 'Part year') + '</span></div></div></div>';
@@ -668,7 +668,7 @@
     else if (a === 'print') window.print();
     else if (a === 'copytax') {
       var A = data(), T = A.taxYears.find(function (t) { return t.y === +b.dataset.v; });
-      var txt = 'TikTok Shop affiliate commission, tax year ' + T.y + '/' + String(T.y + 1).slice(2) + '\nPaid to me: ' + gbp2(T.paid) + '\nSettled orders: ' + T.n + '\nSource: TikTok affiliate orders export, totalled by Commish (by settlement date).';
+      var txt = 'TikTok Shop affiliate commission, tax year ' + T.y + '/' + String(T.y + 1).slice(2) + '\nCommission settled into my TikTok balance: ' + gbp2(T.paid) + '\nSettled orders: ' + T.n + '\nSource: TikTok affiliate orders export, totalled by Commish by settlement date (not withdrawal date).';
       if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { toast('Copied. Paste it into an email to your accountant.'); }, function () { toast('Copying was blocked by your browser.'); });
     }
   });
