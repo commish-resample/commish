@@ -234,11 +234,12 @@
     // shops
     var shopMap = new Map();
     rows.forEach(function (r) {
-      var s = shopMap.get(r.shop); if (!s) { s = { name: r.shop, code: r.shopCode, n: 0, lostN: 0, paid: 0, owed: 0, lost: 0, first: r.odate, prods: {}, items: 0, lostItems: 0 }; shopMap.set(r.shop, s); }
+      var s = shopMap.get(r.shop); if (!s) { s = { name: r.shop, code: r.shopCode, n: 0, lostN: 0, paid: 0, owed: 0, lost: 0, first: r.odate, prods: {}, items: 0, lostItems: 0, retN: 0, inelN: 0, inelVal: 0 }; shopMap.set(r.shop, s); }
       s.items += r.items || 0; if (r.status === 'Ineligible') s.lostItems += r.items || 0;
       s.prods[r.product] = (s.prods[r.product] || 0) + earned(r) + (r.status === 'Ineligible' ? 0 : 0.0001);
       s.n++; if (r.odate < s.first) s.first = r.odate;
-      if (r.status === 'Settled') s.paid += earned(r); else if (r.status === 'Pending') s.owed += r.est; else { s.lost += r.est; s.lostN++; }
+      if (r.status === 'Settled') s.paid += earned(r); else if (r.status === 'Pending') s.owed += r.est;
+      else { s.lost += r.est; s.lostN++; if (r.refunded > 0) s.retN++; else { s.inelN++; s.inelVal += r.est; } }
     });
     A.shops = Array.from(shopMap.values()).map(function (s) { s.earned = s.paid + s.owed; s.lostRate = s.n ? s.lostN / s.n : 0; s.overseas = /^(CN|HK)/i.test(s.code);
       var tp = Object.keys(s.prods).sort(function (a, b) { return s.prods[b] - s.prods[a]; })[0]; s.top = tp ? shortName(tp) : ''; return s; });
@@ -247,6 +248,20 @@
     A.ukLost = grp(false); A.osLost = grp(true);
     var monthStart = new Date(A.max.getFullYear(), A.max.getMonth(), 1);
     A.newShops = A.shops.filter(function (s) { return s.first >= monthStart; }).map(function (s) { return s.name; });
+
+    // lost: returned by customer vs ruled ineligible with nothing returned
+    var RET = I_.filter(function (r) { return r.refunded > 0; }), INEL = I_.filter(function (r) { return !(r.refunded > 0); });
+    A.lostRet = sum(RET, function (r) { return r.est; }); A.lostInel = sum(INEL, function (r) { return r.est; });
+    var uniq = function (a) { var o = {}; a.forEach(function (r) { o[r.oid] = 1; }); return Object.keys(o).length; };
+    A.nRet = uniq(RET); A.nInel = uniq(INEL);
+    var CH = new Map();
+    INEL.forEach(function (r) {
+      var k = r.shop + '|' + r.product, c = CH.get(k);
+      if (!c) { c = { shop: r.shop, product: r.product, n: 0, ids: {}, items: 0, est: 0, gmv: 0, first: r.odate, last: r.odate, rows: [] }; CH.set(k, c); }
+      if (!c.ids[r.oid]) { c.ids[r.oid] = 1; c.n++; } c.items += r.items || 0; c.est += r.est; c.gmv += r.gmv; c.rows.push(r);
+      if (r.odate < c.first) c.first = r.odate; if (r.odate > c.last) c.last = r.odate;
+    });
+    A.challenge = Array.from(CH.values()).sort(function (a, b) { return b.est - a.est; });
 
     // payout check
     A.estSettled = sum(S_, function (r) { return r.est; }); A.actSettled = sum(S_, function (r) { return r.actual || 0; });
@@ -424,6 +439,7 @@
         (A.stuck.length ? '<div class="alert pink t" style="margin-top:10px">' + A.stuck.length + ' orders worth ' + gbp(A.stuckVal) + ' have been pending for over 30 days. Most of yours settle in about ' + A.lagMed + ' days, so these are worth asking TikTok about.</div>' : '') +
         '<p class="sub" style="margin-top:10px">Payouts usually land on a ' + A.payday + '.</p></div>';
       out += '</div>';
+      out += challengeCard(A, true);
     } else {
       out += '<section class="a-in"><p class="kicker">Your commish, ' + range(A.min, A.max) + ' (one export)</p>' + top3(A) + '</section>';
       out += '<div class="tiles">' + tilePending(A, 100) + tileLost(A, 160) + tileRate(A, 220) + tilePer(A, 280) + '</div>';
@@ -466,6 +482,7 @@
         '<p class="sub" style="margin-top:12px">' + (soFar - nCov) + ' months of ' + A.year + ' are still a mystery. Was ' + MONTHS[bestCov.d.getMonth()] + ' your record? <button class="linkish" data-action="unlock" style="font-size:inherit;min-height:0">Unlock Pro</button> to merge older exports and find out.</p></div></div>';
       var tease = A.months.filter(function (x) { return !x.current && !x.future; }).filter(function (x) { return x.owed > 20; }).sort(function (a, b2) { return b2.owed - a.owed; })[0];
       out += locked('<h2>Your year</h2><div style="height:12px"></div>' + yearChart(A, 120, false), tease ? gbp(tease.owed) + ' is still pending from ' + MONTHS[tease.d.getMonth()] : 'Your whole year in one view', 'See every month of your year with Pro');
+      out += challengeCard(A, false);
       out += nudge(A);
     }
     out += '<div class="card t a-in" style="animation-delay:460ms"><div class="row-head"><h2>Top shops</h2>' + (pro ? '<a href="#shops" style="font-weight:600">See all</a>' : '') + '</div><div style="margin-top:8px">' +
@@ -481,7 +498,23 @@
       '<div class="box t"><p>Items sold</p><b>' + count(A.items, 'num', 220) + '</b></div></div>';
   }
   function tilePending(A, dl) { return '<div class="tile pink t a-in" style="animation-delay:' + dl + 'ms"><p>Pending payment</p><b>' + count(A.owed, 'gbp', dl) + '</b><small>Most settle within about ' + A.lagMed + ' days</small></div>'; }
-  function tileLost(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Commission lost (returns/cancellations)</p><b>' + count(A.lost, 'gbp', dl) + '</b></div>'; }
+  function tileLost(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Commission lost (returns/cancellations)</p><b>' + count(A.lost, 'gbp', dl) + '</b>' +
+    (A.lost > 0 ? '<small>' + gbp(A.lostRet) + ' returned, ' + gbp(A.lostInel) + ' cancelled or ruled ineligible</small>' : '') + '</div>'; }
+  function challengeCard(A, pro) {
+    if (!A.nInel) return '';
+    var head = '<div class="row-head"><h2>Worth checking</h2><span class="badge pink t">' + gbp(A.lostInel) + '</span></div>' +
+      '<p class="sub">' + num(A.nInel) + ' orders earned no commission even though nothing was returned. Some are normal cancellations, but a big cluster from one product or shop is worth asking TikTok about.</p>';
+    if (!pro) {
+      var top = A.challenge[0];
+      return '<div class="card t a-in locked" style="animation-delay:380ms">' + head + '<div class="blur" aria-hidden="true" style="margin-top:10px">' + A.challenge.slice(0, 3).map(function () { return '<div class="list-row"><b>Product name here</b><p class="topline">Shop name, 00 orders</p></div>'; }).join('') + '</div>' +
+        '<div class="over" style="top:auto;height:62%"><span class="tag">Biggest: ' + gbp(top.est) + ' on ' + esc(shortName(top.product)) + '</span><button class="btn" data-action="unlock">Unlock Pro to see them all</button></div></div>';
+    }
+    return '<div class="card t a-in" style="animation-delay:380ms">' + head + '<div style="margin-top:8px">' + A.challenge.slice(0, 8).map(function (c, i) {
+      return '<div class="list-row"><div style="display:flex;justify-content:space-between;gap:10px;font-size:15px;font-weight:700"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(shortName(c.product)) + '</span><b>' + gbp(c.est) + '</b></div>' +
+        '<p class="topline">' + esc(c.shop) + ', ' + num(c.n) + ' order' + (c.n === 1 ? '' : 's') + ', ' + range(c.first, c.last) + '</p>' +
+        '<button class="linkish" data-action="copyids" data-i="' + i + '" style="font-size:14px;min-height:36px">Copy order IDs for TikTok support</button></div>';
+    }).join('') + (A.challenge.length > 8 ? '<p class="sub">Plus ' + (A.challenge.length - 8) + ' smaller ones.</p>' : '') + '</div></div>';
+  }
   function tileRate(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Real commission rate</p><b>' + A.effRate.toFixed(1) + '%</b><small>You earn ' + gbp2(A.effRate) + ' for every £100 of sales you drive</small></div>'; }
   function tilePer(A, dl) { return '<div class="tile ink t a-in" style="animation-delay:' + dl + 'ms"><p>Commission per order (average)</p><b>' + gbp2(A.perOrder) + '</b></div>'; }
 
@@ -494,7 +527,8 @@
     out += '<div class="grid2"><div class="card big t a-in" style="animation-delay:120ms">' + list.map(function (s, i) {
       return '<div class="list-row"><div style="display:flex;justify-content:space-between;gap:8px;font-size:16px;font-weight:800"><span>' + esc(s.name) + '</span><span>' + gbp(s.earned) + '</span></div>' + topLine(s) + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px">' + (s.code ? '<span class="badge t' + (s.overseas ? ' pink' : '') + '">' + (s.overseas ? 'Overseas seller' : 'UK seller') + '</span>' : '<span></span>') +
         '<span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><span class="bar-track t" style="width:70px;height:10px"><span class="bar-fill a-barx" style="display:block;width:' + Math.min(100, s.lostRate * 100) + '%;background:var(--ink);animation-delay:' + (300 + i * 50) + 'ms"></span></span>' + Math.round(s.lostRate * 100) + '% lost</span></div>' +
-        (s.lostN ? '<p class="topline" style="text-align:right">' + num(s.lostN) + ' of ' + num(s.n) + ' order' + (s.n === 1 ? '' : 's') + ' lost' + (s.lostItems && s.lostItems !== s.lostN ? ' (' + num(s.lostItems) + ' items)' : '') + ', ' + gbp(s.lost) + ' commission</p>' : '') + '</div>';
+        (s.lostN ? '<p class="topline" style="text-align:right">' + num(s.lostN) + ' of ' + num(s.n) + ' order' + (s.n === 1 ? '' : 's') + ' lost' + (s.lostItems && s.lostItems !== s.lostN ? ' (' + num(s.lostItems) + ' items)' : '') + ', ' + gbp(s.lost) + ' commission</p>' +
+        '<p class="topline" style="text-align:right">' + num(s.retN) + ' returned, ' + num(s.inelN) + ' cancelled or ruled ineligible</p>' : '') + '</div>';
     }).join('') + '</div><div style="display:flex;flex-direction:column;gap:16px">';
     if (A.ukLost != null && A.osLost != null) {
       var mx = Math.max(A.ukLost, A.osLost, 0.01);
@@ -666,6 +700,12 @@
     else if (a === 'tip') { var w = b.parentNode, open = !w.classList.contains('open'); w.classList.toggle('open', open); b.setAttribute('aria-expanded', open); }
     else if (a === 'video') toast('Your how-to video will go here.');
     else if (a === 'print') window.print();
+    else if (a === 'copyids') {
+      var Ad = data(), c = Ad.challenge[+b.dataset.i];
+      var lines = ['Affiliate orders marked Ineligible with no items refunded', 'Product: ' + c.product, 'Shop: ' + c.shop, 'Orders: ' + c.n + ', estimated commission ' + gbp2(c.est), '', 'Order ID, order date, items, estimated commission'];
+      c.rows.slice().sort(function (x, y) { return x.odate - y.odate; }).forEach(function (r) { lines.push(r.oid + ', ' + fmtD(r.odate) + ', ' + r.items + ', ' + gbp2(r.est)); });
+      if (navigator.clipboard) navigator.clipboard.writeText(lines.join('\n')).then(function () { toast('Copied ' + c.n + ' order IDs. Paste them into your message to TikTok Shop support.'); }, function () { toast('Copying was blocked by your browser.'); });
+    }
     else if (a === 'copytax') {
       var A = data(), T = A.taxYears.find(function (t) { return t.y === +b.dataset.v; });
       var txt = 'TikTok Shop affiliate commission, tax year ' + T.y + '/' + String(T.y + 1).slice(2) + '\nCommission settled into my TikTok balance: ' + gbp2(T.paid) + '\nSettled orders: ' + T.n + '\nSource: TikTok affiliate orders export, totalled by Commish by settlement date (not withdrawal date).';
