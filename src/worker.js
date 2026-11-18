@@ -274,6 +274,8 @@ async function checkout(req, env) {
     success_url: `${site}/?upgrade=done`,
     cancel_url: `${site}/?upgrade=cancelled`,
     allow_promotion_codes: 'true',
+    billing_address_collection: 'required',
+    'custom_text[submit][message]': 'Commish Pro is for UK customers. Pro starts straight away and renews until you cancel. Full refund within 14 days: email hello@commish.fyi. Terms: commish.fyi/terms',
     'subscription_data[metadata][user_id]': u.id,
     'metadata[user_id]': u.id
   };

@@ -710,7 +710,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br>Version 18 Nov, 17:25</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 19:00</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
@@ -863,7 +863,7 @@
         '<form id="signinForm" class="sheet-form" novalidate><label for="email">Email</label>' +
         '<input id="email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required>' + err +
         '<button class="btn" type="submit"' + (SH.busy ? ' disabled' : '') + '>' + (SH.busy ? 'Sending…' : 'Email me a link') + '</button></form>' +
-        '<p class="sub small">Your export files never leave your device. We only keep your email and your plan.</p>';
+        '<p class="sub small">Your export files never leave your device. We only keep your email and your plan. <a href="/privacy" target="_blank">Privacy policy</a></p>';
     }
     if (SH.mode === 'upgrade') {
       var opts = ['year', 'month'].map(function (k) {
@@ -876,7 +876,7 @@
         '<ul class="perks"><li>Merge all your exports, as far back as you like</li><li>Every insight, plus your whole year month by month</li><li>Shops, videos, Lives and tax year totals</li><li>Lost orders worth chasing with TikTok</li></ul>' +
         '<div class="opts" role="radiogroup" aria-label="Billing">' + opts + '</div>' + err +
         '<button class="btn wide" data-action="checkout"' + (SH.busy ? ' disabled' : '') + '>' + (SH.busy ? 'Opening payment…' : 'Continue to payment') + '</button>' +
-        '<p class="sub small">Secure payment by Stripe. Cancel any time from your account.</p>';
+        '<p class="sub small">Secure payment by Stripe. Cancel any time, and get a full refund within 14 days. For UK customers. By continuing you agree to our <a href="/terms" target="_blank">terms</a>.</p>';
     }
     // account
     var u = S.user || {}, pro = u.plan === 'pro';
