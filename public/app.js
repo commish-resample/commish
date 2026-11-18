@@ -668,9 +668,11 @@
   }
 
   // ---------- render & routing ----------
-  var ROUTES = ['upload', 'reveal', 'home', 'shops', 'videos', 'tax', 'pro'];
+  var ROUTES = ['upload', 'reveal', 'home', 'shops', 'videos', 'tax', 'pro', 'admin'];
   function route() {
-    var h = (location.hash || '').replace('#', ''); if (ROUTES.indexOf(h) < 0) h = goodFiles().length ? 'home' : 'upload';
+    var h = (location.hash || '').replace('#', '');
+    if (h === 'admin') return 'admin';
+    if (ROUTES.indexOf(h) < 0) h = goodFiles().length ? 'home' : 'upload';
     if (h !== 'upload' && !goodFiles().length) h = 'upload';
     if (S.plan === 'pro' && h === 'pro') h = 'home';
     if (S.plan !== 'pro' && (h === 'shops' || h === 'videos' || h === 'tax')) h = 'pro';
@@ -703,6 +705,7 @@
     document.documentElement.classList.toggle('quiet', !!quiet);
     var r = route(), html;
     if (r === 'upload') { html = viewUpload(); dashShown = false; }
+    else if (r === 'admin') { html = '<div id="adminView"><section class="a-in"><h1>Owner dashboard</h1><p class="sub">Loading…</p></section></div>'; dashShown = false; }
     else {
       var A = data();
       SECTIONS = S.plan === 'pro' ? ['home', 'shops', 'videos', 'tax'] : ['home', 'pro'];
@@ -710,10 +713,11 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 19:45</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:15</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
+    if (r === 'admin') { loadAdmin(); return; }
     var first = $('#sec-home'); if (first) countUp(first, quiet);
     if (quiet) { document.querySelectorAll('.dsec').forEach(function (x) { x.classList.remove('pending'); }); window.scrollTo(0, keepY); }
     reveal();
@@ -889,6 +893,7 @@
       (renew ? '<p class="sub">' + renew + '</p>' : '') + err +
       (!pro ? '<button class="btn wide" data-action="to-upgrade" data-focus>Go Pro</button>' : '') +
       (u.hasBilling ? '<button class="btn ghost wide" data-action="portal"' + (SH.busy ? ' disabled' : '') + '>' + (SH.busy ? 'Opening…' : 'Manage subscription') + '</button>' : '') +
+      (u.admin ? '<a class="btn wide" href="#admin" data-action="sheet-close">Owner dashboard</a>' : '') +
       (u.admin ? '<button class="btn ghost wide" data-action="preview-free" aria-pressed="' + S.previewFree + '">' + (S.previewFree ? 'Back to Pro view' : 'Preview what Free users see') + '</button>' : '') +
       '<button class="linkish" data-action="signout" data-focus>Sign out</button>';
   }
@@ -955,6 +960,40 @@
     setTimeout(function () { loadMe().then(function () { waitForPro(n + 1); }); }, 1500);
   }
   function celebrate() { toast('Welcome to Pro! Everything\'s unlocked.'); }
+
+  // ---------- owner dashboard ----------
+  function loadAdmin() {
+    var box = $('#adminView'); if (!box) return;
+    api('/api/admin/stats').then(function (d) { box.innerHTML = viewAdmin(d); },
+      function () { box.innerHTML = '<section class="a-in"><h1>Owner dashboard</h1><p class="sub">This page is only for the Commish owner. Sign in with the owner email to see it.</p></section>'; });
+  }
+  function ago(sec) {
+    if (!sec) return 'never'; var m = Math.round((Date.now() / 1000 - sec) / 60);
+    if (m < 2) return 'just now'; if (m < 60) return m + ' min ago'; var h = Math.round(m / 60); if (h < 24) return h + 'h ago';
+    return Math.round(h / 24) + 'd ago';
+  }
+  function viewAdmin(d) {
+    var g = d.signups, p = d.pro;
+    var days = []; var map = {}; d.perDay.forEach(function (x) { map[x.d] = x.n; });
+    for (var i = 29; i >= 0; i--) { var dt = new Date(Date.now() - i * 864e5); var k = dt.toISOString().slice(0, 10); days.push({ k: k, n: map[k] || 0, dt: dt }); }
+    var max = Math.max.apply(null, days.map(function (x) { return x.n; }).concat([1]));
+    var bars = '<div class="adm-bars" role="img" aria-label="Sign-ups per day, last 30 days">' + days.map(function (x) {
+      return '<span class="adm-bar t" style="height:' + Math.max(3, Math.round(x.n / max * 100)) + '%" title="' + fmtDs(x.dt) + ': ' + x.n + '"></span>';
+    }).join('') + '</div><div class="adm-axis"><span>' + fmtDs(days[0].dt) + '</span><span>Today</span></div>';
+    var tile = function (label, val, sub, cls) { return '<div class="tile t a-in' + (cls ? ' ' + cls : '') + '"><p>' + label + '</p><b>' + val + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>'; };
+    var rows = d.recent.map(function (r) {
+      var plan = r.plan === 'owner' ? 'Owner' : r.plan === 'gifted' ? 'Pro (gifted)' : r.plan === 'pro' ? 'Pro ' + (r.interval === 'year' ? 'yearly' : 'monthly') + (r.cancelling ? ', cancelling' : '') + (r.status === 'past_due' ? ', payment failed' : '') : 'Free';
+      return '<tr><td>' + esc(r.email) + '</td><td>' + plan + '</td><td>' + fmtDs(new Date(r.joined * 1000)) + '</td><td>' + ago(r.seen) + '</td></tr>';
+    }).join('');
+    return '<section class="a-in"><h1>Owner dashboard</h1><p class="sub">Only you can see this. ' +
+      (d.mode === 'test' ? '<b>Stripe is in test mode</b>, so Pro figures are test purchases.' : 'Stripe is live.') + '</p></section>' +
+      '<div class="tiles">' + tile('Sign-ups', num(g.total), num(g.today) + ' today, ' + num(g.week) + ' this week') + tile('Paying Pro', num(p.paying), num(p.monthly) + ' monthly, ' + num(p.yearly) + ' yearly', 'pink') +
+      tile('Monthly revenue', gbp2(d.mrr), 'Yearly plans counted as a twelfth') + tile('Active this week', num(d.activeWeek), 'Signed-in visits in 7 days') + '</div>' +
+      '<div class="card t a-in"><div class="row-head"><h2>Sign-ups, last 30 days</h2><span class="tag t">' + num(g.month) + '</span></div>' + bars + '</div>' +
+      ((p.cancelling || p.pastDue || p.gifted) ? '<div class="alert t a-in">' + [p.cancelling ? num(p.cancelling) + ' Pro cancelling at period end' : '', p.pastDue ? num(p.pastDue) + ' with a failed payment' : '', p.gifted ? num(p.gifted) + ' on the free Pro list' : ''].filter(Boolean).join(' · ') + '</div>' : '') +
+      '<div class="card t a-in"><div class="row-head"><h2>Latest sign-ups</h2><span class="tag t">' + num(d.recent.length) + '</span></div><div class="adm-table"><table><thead><tr><th>Email</th><th>Plan</th><th>Joined</th><th>Last seen</th></tr></thead><tbody>' + (rows || '<tr><td colspan="4">No sign-ups yet</td></tr>') + '</tbody></table></div></div>' +
+      '<p class="sub small" style="text-align:center">Visitor numbers (including people who never sign in) are in Cloudflare under Analytics › Web analytics.</p>';
+  }
 
   // ---------- events ----------
   document.addEventListener('click', function (e) {

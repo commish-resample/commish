@@ -284,3 +284,16 @@ html.sheet-open{overflow:hidden}
 .legal-links{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;font-weight:600}
 mark.todo{background:var(--pop);color:var(--ink);padding:0 4px;border-radius:4px}
 .foot a{color:inherit}
+
+/* owner dashboard */
+.adm-bars{display:flex;align-items:flex-end;gap:3px;height:140px;margin-top:14px}
+.adm-bar{flex:1;background:var(--paid);border-radius:4px 4px 0 0;min-width:3px;transform-origin:bottom;animation:grow .6s cubic-bezier(.34,1.5,.64,1) both}
+@keyframes grow{from{transform:scaleY(0)}to{transform:none}}
+.adm-axis{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);margin-top:6px}
+.adm-table{overflow-x:auto;margin-top:10px}
+.adm-table table{width:100%;border-collapse:collapse;font-size:14px}
+.adm-table th{text-align:left;font-weight:800;padding:8px 10px 8px 0;border-bottom:2px solid var(--line);white-space:nowrap}
+.adm-table td{padding:8px 10px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.adm-table td:first-child{white-space:normal;overflow-wrap:anywhere;min-width:160px}
+a.btn.wide{display:flex;align-items:center;justify-content:center;text-decoration:none}
+@media (prefers-reduced-motion:reduce){.adm-bar{animation:none}}

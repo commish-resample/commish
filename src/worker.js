@@ -407,6 +407,46 @@ async function webhook(req, env) {
   return json({ received: true });
 }
 
+/* ---------- Owner dashboard ---------- */
+
+async function adminStats(req, env) {
+  const u = await currentUser(req, env);
+  if (!u || !isAdmin(env, u.email)) return json({ error: 'not found' }, 404);
+  const t = now(), day = 86400;
+  const q = (sql, ...b) => env.DB.prepare(sql).bind(...b);
+  const [tot, d1, d7, d30, act7, plans, perDay, recent] = await env.DB.batch([
+    q('SELECT COUNT(*) AS n FROM users'),
+    q('SELECT COUNT(*) AS n FROM users WHERE created_at > ?', t - day),
+    q('SELECT COUNT(*) AS n FROM users WHERE created_at > ?', t - 7 * day),
+    q('SELECT COUNT(*) AS n FROM users WHERE created_at > ?', t - 30 * day),
+    q('SELECT COUNT(*) AS n FROM users WHERE last_seen > ?', t - 7 * day),
+    q(`SELECT plan, sub_interval, cancel_at_end, sub_status, COUNT(*) AS n FROM users GROUP BY plan, sub_interval, cancel_at_end, sub_status`),
+    q(`SELECT strftime('%Y-%m-%d', created_at, 'unixepoch') AS d, COUNT(*) AS n FROM users WHERE created_at > ? GROUP BY d ORDER BY d`, t - 30 * day),
+    q('SELECT email, plan, sub_interval, cancel_at_end, sub_status, created_at, last_seen FROM users ORDER BY created_at DESC LIMIT 100')
+  ]);
+  const gifted = String(env.PRO_EMAILS || '').split(',').map((x) => x.trim()).filter(Boolean).length;
+  let monthly = 0, yearly = 0, cancelling = 0, pastDue = 0;
+  for (const r of plans.results) {
+    if (r.plan !== 'pro') continue;
+    if (r.sub_interval === 'year') yearly += r.n; else monthly += r.n;
+    if (r.cancel_at_end) cancelling += r.n;
+    if (r.sub_status === 'past_due') pastDue += r.n;
+  }
+  const first = (x) => (x.results[0] || { n: 0 }).n;
+  return json({
+    mode: String(env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') ? 'live' : 'test',
+    signups: { total: first(tot), today: first(d1), week: first(d7), month: first(d30) },
+    activeWeek: first(act7),
+    pro: { monthly, yearly, paying: monthly + yearly, cancelling, pastDue, gifted },
+    mrr: Math.round((monthly * 2.99 + yearly * 19.99 / 12) * 100) / 100,
+    perDay: perDay.results,
+    recent: recent.results.map((r) => ({
+      email: r.email, plan: isAdmin(env, r.email) ? 'owner' : isGifted(env, r.email) ? 'gifted' : r.plan,
+      interval: r.sub_interval, cancelling: !!r.cancel_at_end, status: r.sub_status, joined: r.created_at, seen: r.last_seen
+    }))
+  });
+}
+
 /* ---------- Router ---------- */
 
 export default {
@@ -423,6 +463,7 @@ export default {
       const p = url.pathname, m = req.method;
       if (m === 'POST' && p !== '/api/stripe-webhook' && !sameOrigin(req)) return json({ error: 'forbidden' }, 403);
       if (p === '/api/me' && m === 'GET') return await me(req, env);
+      if (p === '/api/admin/stats' && m === 'GET') return await adminStats(req, env);
       if (p === '/api/login' && m === 'POST') return await login(req, env);
       if (p === '/api/verify' && m === 'GET') return verifyPage(url.searchParams.get('t') || '');
       if (p === '/api/verify' && m === 'POST') return await verify(req, env);
