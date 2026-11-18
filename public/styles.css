@@ -225,7 +225,7 @@ a,button{-webkit-tap-highlight-color:transparent}
 @keyframes sdown{to{transform:translateY(100%)}}
 @media (min-width:720px){
   .sheet-bg{align-items:center}
-  .sheet{border-bottom:2.5px solid var(--line);border-radius:30px;box-shadow:6px 6px 0 var(--shadow);animation:pop .42s cubic-bezier(.34,1.6,.64,1) both}
+  .sheet{border-bottom:2.5px solid var(--line);border-radius:30px;animation:pop .42s cubic-bezier(.34,1.6,.64,1) both}
   .sheet-bg.closing .sheet{animation:popout .2s ease both}
   @keyframes pop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
   @keyframes popout{to{transform:scale(.92);opacity:0}}
