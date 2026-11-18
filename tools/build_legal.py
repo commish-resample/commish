@@ -1,7 +1,7 @@
 import html
 CO = "Jasper Living Limited"
 NUM = '16664307'
-ADDR = '<mark class="todo">[registered office address]</mark>'
+ADDR = '82a James Carter Road, Mildenhall, United Kingdom, IP28 7DE'
 UPDATED = "18 November 2026"
 def page(slug, title, desc, body):
     return f"""<!doctype html>
