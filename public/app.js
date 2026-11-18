@@ -390,7 +390,7 @@
       var x0 = cx(tr.i0), y0 = cy(tr.y0), x1 = cx(tr.i1), y1 = cy(tr.y1);
       // The line "shoots" from the first month to now: a clip reveals it left to right, led by a glowing dot.
       var still = reduceMotion || document.documentElement.classList.contains('quiet');
-      var dur = '1.1s', begin = '1.05s';
+      var dur = '1.1s', begin = 'indefinite';
       out += '<svg class="trend" viewBox="0 0 1200 ' + (H + 6) + '" preserveAspectRatio="none" aria-hidden="true">' +
         (still ? '' : '<defs><clipPath id="trClip"><rect x="0" y="-20" height="' + (H + 46) + '" width="' + x0 + '"><animate attributeName="width" from="' + x0 + '" to="' + (+x1 + 8) + '" dur="' + dur + '" begin="' + begin + '" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.2 1"/></rect></clipPath></defs>') +
         '<line' + (still ? '' : ' clip-path="url(#trClip)"') + ' x1="' + x0 + '" y1="' + y0 + '" x2="' + x1 + '" y2="' + y1 + '" vector-effect="non-scaling-stroke"/>' +
@@ -759,7 +759,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:33</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:36</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
@@ -767,6 +767,20 @@
     var first = $('#sec-home'); if (first) countUp(first, quiet);
     if (quiet) { document.querySelectorAll('.dsec').forEach(function (x) { x.classList.remove('pending'); }); window.scrollTo(0, keepY); }
     reveal();
+    watchTrend();
+  }
+  // Start the trend line's animation only once most of the chart is on screen.
+  var trendObs = null;
+  function watchTrend() {
+    if (trendObs) { trendObs.disconnect(); trendObs = null; }
+    var plot = document.querySelector('.plot.has-trend'); if (!plot) return;
+    var anims = plot.querySelectorAll('animate'); if (!anims.length) return;
+    var go = function () { setTimeout(function () { anims.forEach(function (a) { try { a.beginElement(); } catch (e) {} }); }, 250); };
+    if (!('IntersectionObserver' in window)) { go(); return; }
+    trendObs = new IntersectionObserver(function (es) {
+      if (es.some(function (e) { return e.isIntersecting; })) { trendObs.disconnect(); trendObs = null; go(); }
+    }, { threshold: 0.6 });
+    trendObs.observe(plot);
   }
   function goSection(k, smooth) {
     var el = $('#sec-' + k); if (!el) return;
