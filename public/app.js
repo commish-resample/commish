@@ -759,7 +759,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:36</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:42</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
@@ -972,7 +972,7 @@
     var email = ($('#email').value || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { SH.err = 'That email address doesn\'t look right. Check it and try again.'; drawSheet(); $('#email').value = email; $('#email').focus(); return; }
     SH.busy = true; SH.err = ''; drawSheet(); $('#email').value = email;
-    stash().then(function () { return api('/api/login', { email: email }); }).then(function (d) {
+    stash().then(function () { return api('/api/login', { email: email, next: SH.reason === 'unlock' ? 'upgrade' : undefined }); }).then(function (d) {
       SH.busy = false; SH.sent = email; SH.devLink = d.devLink || null; drawSheet();
     }, function (er) { SH.busy = false; SH.err = er.message; drawSheet(); $('#email').value = email; });
   }
@@ -997,7 +997,7 @@
   document.addEventListener('click', function (e) { if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-bg')) closeSheet(); });
 
   function boot() {
-    var q = new URLSearchParams(location.search), signin = q.get('signin'), up = q.get('upgrade');
+    var q = new URLSearchParams(location.search), signin = q.get('signin'), up = q.get('upgrade'), next = q.get('next');
     if (signin || up) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
     // Only bring files back after a sign-in or payment; otherwise clear any leftover copy.
     var restore = (signin === 'ok' || up) ? unstash() : kv('readwrite', function (st) { st.delete('stash'); }).then(function () { return false; }, function () { return false; });
@@ -1006,6 +1006,7 @@
       if (signin === 'ok') {
         if (!S.user) toast('That didn\'t work. Try signing in again.');
         else if (S.user.plan === 'pro') toast('You\'re signed in. Pro is on.');
+        else if (next === 'upgrade' && S.ready && S.ready.pay) { toast('You\'re signed in. Pick a plan to unlock Pro.'); openSheet('upgrade'); }
         else { toast('You\'re signed in.'); }
       } else if (signin === 'expired') { openSheet('signin'); SH.err = 'That link has expired or was already used. Send yourself a new one.'; drawSheet(); }
       else if (up === 'cancelled') toast('No payment taken. You\'re still on Free.');

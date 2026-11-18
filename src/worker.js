@@ -186,7 +186,9 @@ async function login(req, env) {
     env.DB.prepare('DELETE FROM login_ips WHERE created_at < ?').bind(now() - 86400)
   ]);
 
-  const link = `${origin(req, env)}/api/verify?t=${token}`;
+  // Remember why they signed in, so they land in the right place afterwards.
+  const next = body.next === 'upgrade' ? '&next=upgrade' : '';
+  const link = `${origin(req, env)}/api/verify?t=${token}${next}`;
   if (env.DEV_SHOW_LINK === '1') return json({ ok: true, devLink: link });
   if (!env.RESEND_API_KEY) return json({ error: 'Sign-in emails aren\'t switched on yet.' }, 503);
   try {
@@ -200,22 +202,23 @@ async function login(req, env) {
 
 // Email security scanners often open links before the person does. So opening the link
 // only shows a page that signs you in with a second step; scanners don't take it.
-function verifyPage(token) {
+function verifyPage(token, next) {
   const t = String(token).replace(/[^A-Za-z0-9_-]/g, '');
+  const n = next === 'upgrade' ? 'upgrade' : '';
   return new Response(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Signing you in · Commish</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#FFE45C;color:#1B1340;font-family:system-ui,sans-serif}
 .c{background:#fff;border:3px solid #1B1340;border-radius:24px;padding:28px 24px;max-width:360px;margin:20px;text-align:center}
 h1{margin:0 0 8px;font-size:26px}p{margin:0 0 18px;line-height:1.5}
 button{min-height:52px;padding:0 24px;border:0;border-radius:26px;background:#1B1340;color:#FFE45C;font:inherit;font-weight:800;font-size:17px;cursor:pointer}</style></head>
 <body><form class="c" method="post" action="/api/verify"><h1>Signing you in</h1><p>One moment. If nothing happens, tap the button.</p>
-<input type="hidden" name="t" value="${t}"><button type="submit">Sign in to Commish</button></form>
+<input type="hidden" name="t" value="${t}"><input type="hidden" name="next" value="${n}"><button type="submit">Sign in to Commish</button></form>
 <script>document.forms[0].submit()</script></body></html>`, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin' } });
 }
 
 async function verify(req, env) {
   const site = origin(req, env);
-  let token = '';
-  try { const f = await req.formData(); token = String(f.get('t') || ''); } catch (e) {}
+  let token = '', next = '';
+  try { const f = await req.formData(); token = String(f.get('t') || ''); next = f.get('next') === 'upgrade' ? '&next=upgrade' : ''; } catch (e) {}
   const row = token ? await env.DB.prepare('SELECT * FROM login_tokens WHERE hash = ?').bind(await sha256(token)).first() : null;
   if (!row || row.used || row.expires < now()) {
     return Response.redirect(`${site}/?signin=expired`, 302);
@@ -234,7 +237,7 @@ async function verify(req, env) {
 
   return new Response(null, {
     status: 302,
-    headers: { location: `${site}/?signin=ok`, 'set-cookie': sessionCookie(sid, SESSION_DAYS * 86400), 'cache-control': 'no-store' }
+    headers: { location: `${site}/?signin=ok${next}`, 'set-cookie': sessionCookie(sid, SESSION_DAYS * 86400), 'cache-control': 'no-store' }
   });
 }
 
@@ -465,7 +468,7 @@ export default {
       if (p === '/api/me' && m === 'GET') return await me(req, env);
       if (p === '/api/admin/stats' && m === 'GET') return await adminStats(req, env);
       if (p === '/api/login' && m === 'POST') return await login(req, env);
-      if (p === '/api/verify' && m === 'GET') return verifyPage(url.searchParams.get('t') || '');
+      if (p === '/api/verify' && m === 'GET') return verifyPage(url.searchParams.get('t') || '', url.searchParams.get('next'));
       if (p === '/api/verify' && m === 'POST') return await verify(req, env);
       if (p === '/api/logout' && m === 'POST') return await logout(req, env);
       if (p === '/api/checkout' && m === 'POST') return await checkout(req, env);
