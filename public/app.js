@@ -315,7 +315,11 @@
       var live = best(allLives, function (c) { return c.e; });
       var B = { };
       if (day) B.day = { v: day.v, d: new Date(day.x[0]) };
-      if (many) B.orders = { v: many.v, d: new Date(many.x[0]) };
+      if (many) {
+        var mk = many.x[0], placed = {}, items = 0;
+        rows.forEach(function (r) { if (dk(r.odate) === mk) { placed[r.oid] = 1; items += r.items || 0; } });
+        B.orders = { v: many.v, d: new Date(mk), placed: Object.keys(placed).length, items: items };
+      }
       if (week) B.week = { v: week.v, d: new Date(week.x.k) };
       if (A.bestMonth && A.bestMonth.paid + A.bestMonth.owed > 0) B.month = { v: A.bestMonth.paid + A.bestMonth.owed, d: A.bestMonth.d };
       if (order) B.order = { v: order.v, d: order.x.d, p: shortName(order.x.p) };
@@ -650,13 +654,13 @@
     var cut = new Date(+A.max - 30 * DAY), isNew = function (d) { return d && d >= cut; };
     var wd = function (d) { return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); };
     var T = [];
-    T.push(['Best day', gbp(B.day.v), wd(B.day.d), B.day.d, 'dark']);
-    if (B.week) T.push(['Best week', gbp(B.week.v), 'Week of ' + fmtD(B.week.d), B.week.d]);
-    if (B.month) T.push(['Best month', gbp(B.month.v), MONTHS[B.month.d.getMonth()] + ' ' + B.month.d.getFullYear(), A.bestMonth.key === A.curMonth.key ? A.max : null]);
-    if (B.orders) T.push(['Most orders in a day', num(B.orders.v), wd(B.orders.d), B.orders.d]);
-    if (B.order) T.push(['Biggest single order', gbp(B.order.v), esc(B.order.p), B.order.d]);
-    if (B.video) T.push(['Best video', gbp(B.video.v), esc(B.video.p) + (B.video.d ? ', posted ' + fmtDs(B.video.d) : ''), B.video.d]);
-    if (B.live) T.push(['Best Live', gbp(B.live.v), esc(B.live.p) + (B.live.d ? ', ' + fmtDs(B.live.d) : ''), B.live.d]);
+    T.push(['Best commission day', gbp(B.day.v), wd(B.day.d), B.day.d, 'dark']);
+    if (B.week) T.push(['Best commission week', gbp(B.week.v), 'Week of ' + fmtD(B.week.d), B.week.d]);
+    if (B.month) T.push(['Best commission month', gbp(B.month.v), MONTHS[B.month.d.getMonth()] + ' ' + B.month.d.getFullYear(), A.bestMonth.key === A.curMonth.key ? A.max : null]);
+    if (B.orders) T.push(['Most paid orders in a day', num(B.orders.v), num(B.orders.placed) + ' placed, ' + num(B.orders.items) + ' items. ' + wd(B.orders.d), B.orders.d]);
+    if (B.order) T.push(['Most commission from one order', gbp(B.order.v), esc(B.order.p), B.order.d]);
+    if (B.video) T.push(['Top-earning video', gbp(B.video.v), esc(B.video.p) + (B.video.d ? ', posted ' + fmtDs(B.video.d) : ''), B.video.d]);
+    if (B.live) T.push(['Top-earning Live', gbp(B.live.v), esc(B.live.p) + (B.live.d ? ', ' + fmtDs(B.live.d) : ''), B.live.d]);
     if (B.streak) T.push(['Longest selling streak', B.streak.n + ' days', (B.streak.from.getFullYear() === B.streak.to.getFullYear() ? fmtDs(B.streak.from) : fmtD(B.streak.from)) + ' to ' + fmtD(B.streak.to), B.streak.to]);
     var nNew = T.filter(function (x) { return isNew(x[3]); }).length;
     var out = '<div class="card big t a-in" style="animation-delay:' + (delay || 300) + 'ms"><div class="row-head"><h2>' + svg('trophy', 24) + ' Your personal bests</h2>' +
@@ -669,12 +673,12 @@
     if (B.current) out += '<div class="alert pink t" style="margin-top:14px;display:flex;gap:10px;align-items:center">' + svg('flame', 22) + '<span><b>You\'ve made a sale every day for ' + B.current + ' days.</b> ' + (B.streak && B.current >= B.streak.n ? 'That\'s your best ever. Keep it going!' : (B.streak ? (B.streak.n - B.current + 1) + ' more days beats your record.' : 'Keep it going!')) + '</span></div>';
     if (B.milestones.length) {
       out += '<h3 class="pb-h">Milestones</h3><div class="ms-row">' + B.milestones.slice(-6).map(function (m, i) {
-        return '<span class="ms t a-pop" style="animation-delay:' + ((delay || 300) + 500 + i * 60) + 'ms"><b>' + kMoney(m.v) + ' earned</b><span>' + fmtD(m.d) + '</span></span>';
-      }).join('') + (B.monthMs ? '<span class="ms t a-pop" style="animation-delay:' + ((delay || 300) + 900) + 'ms"><b>First ' + kMoney(B.monthMs.lvl) + ' month</b><span>' + MONTHS[B.monthMs.d.getMonth()] + ' ' + B.monthMs.d.getFullYear() + '</span></span>' : '') + '</div>';
+        return '<span class="ms t a-pop" style="animation-delay:' + ((delay || 300) + 500 + i * 60) + 'ms"><b>' + kMoney(m.v) + ' commission</b><span>' + fmtD(m.d) + '</span></span>';
+      }).join('') + (B.monthMs ? '<span class="ms t a-pop" style="animation-delay:' + ((delay || 300) + 900) + 'ms"><b>First ' + kMoney(B.monthMs.lvl) + ' commission month</b><span>' + MONTHS[B.monthMs.d.getMonth()] + ' ' + B.monthMs.d.getFullYear() + '</span></span>' : '') + '</div>';
     }
     if (B.next) {
       var prevMs = B.milestones.length ? B.milestones[B.milestones.length - 1].v : 0, pct = Math.max(2, Math.min(100, (B.total - prevMs) / (B.next - prevMs) * 100));
-      out += '<div style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:700"><span>Next: ' + kMoney(B.next) + ' earned</span><span>' + gbp(B.next - B.total) + ' to go</span></div>' +
+      out += '<div style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:700"><span>Next: ' + kMoney(B.next) + ' commission</span><span>' + gbp(B.next - B.total) + ' to go</span></div>' +
         '<div class="pbbar" style="margin-top:6px"><i style="width:' + pct.toFixed(1) + '%"></i></div></div>';
     }
     return out + '</div>';
@@ -720,7 +724,7 @@
     var tease = A.months.filter(function (x) { return !x.current && !x.future; }).filter(function (x) { return x.owed > 20; }).sort(function (a, b2) { return b2.owed - a.owed; })[0];
     cards.push(locked('<h2>Your year</h2><div style="height:12px"></div>' + yearChart(A, 120, false), tease ? gbp(tease.owed) + ' still pending from ' + MONTHS[tease.d.getMonth()] : 'Your whole year in one view', 'Every month, paid, pending and lost'));
     if (A.nInel) { var top = A.challenge[0]; cards.push(locked('<h2>Worth checking</h2><div style="margin-top:10px">' + [1, 2, 3].map(function () { return '<div class="list-row"><b>Product name here</b><p class="topline">Shop name, 12 orders</p></div>'; }).join('') + '</div>', gbp(A.lostInel) + ' in orders worth chasing', top ? 'Biggest: ' + gbp(top.est) + ' on ' + esc(shortName(top.product)) : 'Lost orders to raise with TikTok')); }
-    if (A.bests && A.bests.day) cards.push(locked('<h2>Your personal bests</h2><div class="pbgrid" style="margin-top:10px">' + ['Best day', 'Best week', 'Best month', 'Best video'].map(function (l) { return '<div class="pb t"><p>' + l + '</p><b>£0,000</b><span>Date here</span></div>'; }).join('') + '</div>', 'Your best day: ' + gbp(A.bests.day.v), 'Records, streaks and milestones'));
+    if (A.bests && A.bests.day) cards.push(locked('<h2>Your personal bests</h2><div class="pbgrid" style="margin-top:10px">' + ['Best commission day', 'Best commission week', 'Best commission month', 'Top-earning video'].map(function (l) { return '<div class="pb t"><p>' + l + '</p><b>£0,000</b><span>Date here</span></div>'; }).join('') + '</div>', 'Your best commission day: ' + gbp(A.bests.day.v), 'Records, streaks and milestones'));
     cards.push(locked('<h2>All shops</h2>' + A.shops.slice(0, 5).map(function (s) { return '<div class="list-row"><b>' + esc(s.name) + '</b> ' + gbp(s.earned) + '</div>'; }).join(''), 'Which shops lose your orders', 'Lost rates, UK vs overseas sellers, new shops'));
     cards.push(locked('<h2>Your videos</h2><div style="height:150px"></div>', Math.round(A.evergreen) + '% came from older videos', 'Best posting times, evergreen videos, Lives'));
     cards.push(locked('<h2>Tax year</h2><div class="receipt" style="height:150px;margin-top:10px"></div>', 'Your tax year, sorted', 'UK tax year totals for your accountant'));
@@ -847,7 +851,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 19 Nov, 20:39</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 19 Nov, 20:44</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
