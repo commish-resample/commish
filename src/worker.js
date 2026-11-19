@@ -460,6 +460,7 @@ export default {
       url.hostname = url.hostname.slice(4);
       return Response.redirect(url.toString(), 301);
     }
+    if (url.pathname.startsWith('/media/')) return media(req, env);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req);
     try {
       await ensureSchema(env);
@@ -481,3 +482,26 @@ export default {
     }
   }
 };
+
+// Videos need byte-range support (iPhones refuse to play without it)
+async function media(req, env) {
+  const res = await env.ASSETS.fetch(req);
+  if (res.status === 206 || !res.ok || req.method !== 'GET') return res;
+  const range = req.headers.get('Range');
+  const h = new Headers(res.headers);
+  h.set('Accept-Ranges', 'bytes');
+  if (!range) return new Response(res.body, { status: 200, headers: h });
+  const buf = await res.arrayBuffer();
+  const size = buf.byteLength;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+  let start, end;
+  if (m && m[1] !== '') { start = +m[1]; end = m[2] !== '' ? Math.min(+m[2], size - 1) : size - 1; }
+  else if (m && m[2] !== '') { start = Math.max(0, size - +m[2]); end = size - 1; }
+  if (start === undefined || start > end || start >= size) {
+    h.set('Content-Range', 'bytes */' + size); h.delete('Content-Length');
+    return new Response(null, { status: 416, headers: h });
+  }
+  h.set('Content-Range', 'bytes ' + start + '-' + end + '/' + size);
+  h.set('Content-Length', String(end - start + 1));
+  return new Response(buf.slice(start, end + 1), { status: 206, headers: h });
+}

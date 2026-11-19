@@ -445,8 +445,8 @@
     }).join('') + '</div>' + mergeNote(g) : '';
     return '<section class="a-in"><h1>Let\'s find your commish</h1><p class="sub" style="font-size:17px;max-width:560px">Upload your TikTok affiliate orders export and see what you\'ve earned, what\'s still owed and what\'s working.</p></section>' +
       '<div class="grid2">' +
-      '<div class="card t a-in" style="display:flex;gap:14px;animation-delay:100ms"><button class="video t" data-action="video" aria-label="Play the how-to video"><span class="a-pop" style="width:54px;height:54px;border-radius:50%;background:var(--pop);border:2.5px solid var(--chipInk);display:flex;align-items:center;justify-content:center;color:var(--ink);animation-delay:500ms"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg></span>How-to video coming soon</button>' +
-      '<div class="steps"><p style="margin:0;font-size:19px;font-weight:800">Export in 3 taps</p><div class="step"><i class="t">1</i><span>Open your affiliate earnings in TikTok</span></div><div class="step"><i class="t">2</i><span>Tap download on your orders</span></div><div class="step"><i class="t">3</i><span>Pick up to 90 days and export</span></div></div></div>' +
+      '<div class="card t a-in" style="display:flex;gap:14px;animation-delay:100ms"><button class="video t" data-action="video" aria-label="Watch the how-to video full size">' + '<video src="' + VID + '" poster="' + VID_POSTER + '" muted loop playsinline preload="metadata"' + (reduceMotion ? '' : ' autoplay') + ' aria-hidden="true" tabindex="-1"></video>' + '<span class="vbadge"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>Watch</span></button>' +
+      '<div class="steps"><p style="margin:0;font-size:19px;font-weight:800">How to export</p><div class="step"><i class="t">1</i><span>In TikTok, go to your profile and tap <b>TikTok Studio</b></span></div><div class="step"><i class="t">2</i><span>Open <b>TikTok Shop for Creators</b>, then <b>Earnings</b></span></div><div class="step"><i class="t">3</i><span>Tap <b>Affiliate orders</b>, then the download arrow at the top right</span></div><div class="step"><i class="t">4</i><span>Choose <b>Custom</b>, pick up to 90 days and tap <b>Confirm</b></span></div><div class="step"><i class="t">5</i><span>When it says <b>File ready</b>, tap download</span></div><div class="step"><i class="t">6</i><span>Tap Share, then <b>Save to Files</b> or <b>Mail</b> it to yourself</span></div></div></div>' +
       '<div style="display:flex;flex-direction:column;gap:14px"><div class="drop t a-in" id="drop" style="animation-delay:180ms"><span class="a-bob" aria-hidden="true" style="display:block;position:relative;width:74px;height:88px"><svg width="74" height="88" viewBox="0 0 74 88"><path d="M8 4h40l18 18v58a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4z" style="fill:var(--tint);stroke:var(--line)" stroke-width="3" stroke-linejoin="round"/><path d="M48 4v18h18" fill="none" style="stroke:var(--line)" stroke-width="3" stroke-linejoin="round"/><path d="M16 44h34M16 54h34M16 64h22" style="stroke:var(--line)" stroke-width="3" stroke-linecap="round"/></svg><span style="position:absolute;right:-10px;bottom:-6px;width:32px;height:32px;border-radius:50%;background:var(--pop);border:2.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800">£</span></span>' +
       '<button class="btn t" data-action="choose">Choose my export' + (g.length ? 's' : '') + '</button><p class="sub" style="margin:0">.xlsx or .csv. Add a few at once to cover a whole year.</p></div>' +
       '<div class="card dark t" style="display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:22px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span style="font-size:15px;font-weight:600;line-height:1.35;flex:1 1 auto">Your file is read on this device and never uploaded anywhere.</span>' + privacyTip() + '</div>' +
@@ -758,7 +758,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 18 Nov, 23:56</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 19 Nov, 12:04</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
@@ -814,6 +814,21 @@
       var step = function (ts) { if (!t0) t0 = ts; var p = Math.min(1, Math.max(0, (ts - t0 - delay) / 1400)); show(target * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); };
       requestAnimationFrame(step);
     });
+  }
+  var VID = '/media/how-to-export-v1.mp4', VID_POSTER = '/media/how-to-export-v1.jpg';
+  function openVideo() {
+    var last = document.activeElement;
+    var o = document.createElement('div');
+    o.className = 'vlight';
+    o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-label', 'How to export your TikTok earnings file');
+    o.innerHTML = '<div class="vbox"><button class="vclose t" aria-label="Close video"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+      '<video src="' + VID + '" poster="' + VID_POSTER + '" controls muted loop playsinline autoplay></video></div>';
+    function close() { document.removeEventListener('keydown', key); o.remove(); if (last && last.focus) last.focus(); }
+    function key(e) { if (e.key === 'Escape') close(); }
+    o.addEventListener('click', function (e) { if (e.target === o || e.target.closest('.vclose')) close(); });
+    document.addEventListener('keydown', key);
+    document.body.appendChild(o);
+    o.querySelector('.vclose').focus();
   }
   function toast(msg) { var h = $('#toastHost'); h.innerHTML = '<div class="toast">' + esc(msg) + '</div>'; clearTimeout(toast.t); toast.t = setTimeout(function () { h.innerHTML = ''; }, 3600); }
 
@@ -1080,7 +1095,7 @@
     else if (a === 'to-signin') openSheet('signin');
     else if (a === 'preview-free') { S.previewFree = !S.previewFree; applyPlan(); drawSheet(); render(true); }
     else if (a === 'tip') { var w = b.parentNode, open = !w.classList.contains('open'); w.classList.toggle('open', open); b.setAttribute('aria-expanded', open); }
-    else if (a === 'video') toast('Your how-to video will go here.');
+    else if (a === 'video') openVideo();
     else if (a === 'print') window.print();
     else if (a === 'copyids') {
       var Ad = data(), c = Ad.challenge[+b.dataset.i];

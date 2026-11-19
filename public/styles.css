@@ -118,7 +118,15 @@ h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1
 .steps{display:flex;flex-direction:column;gap:12px;justify-content:center}
 .step{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.35}
 .step i{flex:0 0 26px;height:26px;border-radius:50%;background:var(--tint);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;font-style:normal}
-.video{flex:0 0 124px;height:220px;border-radius:22px;background:var(--chipBg);color:var(--chipInk);border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 10px;font-size:13px;font-weight:600;text-align:center}
+.video{position:relative;flex:0 0 130px;height:231px;border-radius:22px;background:var(--chipBg);border:2.5px solid var(--line);padding:0;overflow:hidden;cursor:pointer;align-self:flex-start}
+.video video{display:block;width:100%;height:100%;object-fit:cover}
+.video .vbadge{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:99px;background:var(--accent);color:var(--accentInk);font:800 13px/1 inherit;font-family:inherit;white-space:nowrap}
+.video:hover .vbadge,.video:focus-visible .vbadge{background:var(--owed);color:#1B1340}
+.vlight{position:fixed;inset:0;z-index:60;background:rgba(15,10,35,.78);display:flex;align-items:center;justify-content:center;padding:16px}
+.vbox{position:relative;height:min(88vh,calc((100vw - 32px) * 16 / 9));aspect-ratio:9/16;border-radius:26px;overflow:hidden;border:3px solid #fff;background:#000}
+.vbox video{display:block;width:100%;height:100%;object-fit:contain;background:#000}
+.vclose{position:absolute;top:10px;right:10px;z-index:2;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#1B1340;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.step b{font-weight:800}
 .files{display:flex;flex-direction:column;gap:6px;font-size:14px}
 .file{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap;padding:10px 12px;border-radius:16px;background:var(--card);border:2px solid var(--line)}
 .file b{min-width:0;overflow-wrap:anywhere}
