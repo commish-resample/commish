@@ -437,7 +437,7 @@ async function adminStats(req, env) {
   }
   const first = (x) => (x.results[0] || { n: 0 }).n;
   return json({
-    mode: String(env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') ? 'live' : 'test',
+    mode: /^(sk|rk)_live_/.test(String(env.STRIPE_SECRET_KEY || '')) ? 'live' : 'test',
     signups: { total: first(tot), today: first(d1), week: first(d7), month: first(d30) },
     activeWeek: first(act7),
     pro: { monthly, yearly, paying: monthly + yearly, cancelling, pastDue, gifted },
