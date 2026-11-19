@@ -129,13 +129,13 @@ h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.1
 .step b{font-weight:800}
 .then{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:2px;font-size:17px;font-weight:800;color:var(--ink)}
 .then span{white-space:nowrap}
-.then .wide{display:none}
+.then .wide,.then .squig-up{display:none}
 .then .squig{flex:0 0 auto;transform:rotate(90deg);margin:30px 0 26px -18px;color:var(--owed)}
 .squig .sq-line,.squig .sq-head{stroke-dasharray:1;stroke-dashoffset:0}
 .squig .sq-line{animation:sqDraw .9s .9s ease-out both}
 .squig .sq-head{animation:sqDraw .25s 1.75s ease-out both}
 @keyframes sqDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
-@media (min-width:900px){.then .wide{display:inline}.then .narrow{display:none}.then .squig{transform:none;margin:0}}
+@media (min-width:900px){.then{align-items:flex-end}.then .wide{display:inline;padding-bottom:10px}.then .narrow,.then .squig-down{display:none}.then .squig-up{display:block;transform:none;margin:-6px 0 0}.squig-up .sq-line{animation-duration:1.2s}.squig-up .sq-head{animation-delay:2.05s}}
 @media (prefers-reduced-motion:reduce){.squig .sq-line,.squig .sq-head{animation:none}}
 html.quiet .squig .sq-line,html.quiet .squig .sq-head{animation:none}
 .files{display:flex;flex-direction:column;gap:6px;font-size:14px}
