@@ -212,7 +212,7 @@ h1{margin:0 0 8px;font-size:26px}p{margin:0 0 18px;line-height:1.5}
 button{min-height:52px;padding:0 24px;border:0;border-radius:26px;background:#1B1340;color:#FFE45C;font:inherit;font-weight:800;font-size:17px;cursor:pointer}</style></head>
 <body><form class="c" method="post" action="/api/verify"><h1>Signing you in</h1><p>One moment. If nothing happens, tap the button.</p>
 <input type="hidden" name="t" value="${t}"><input type="hidden" name="next" value="${n}"><button type="submit">Sign in to Commish</button></form>
-<script>document.forms[0].submit()</script></body></html>`, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin' } });
+<script>document.forms[0].submit()</script></body></html>`, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin', 'x-frame-options': 'DENY', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; script-src 'sha256-ePniVEkSivX/c7XWBGafqh8tSpiRrKiqYeqbG7N1TOE='; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" } });
 }
 
 async function verify(req, env) {
