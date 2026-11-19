@@ -362,3 +362,4 @@ a.btn.wide{display:flex;align-items:center;justify-content:center;text-decoratio
 html.quiet .pbbar i{animation:none}
 @media (max-width:760px){.pbgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.pb b{font-size:22px}}
 .alert svg{flex:0 0 auto}
+html,body{overflow-x:clip}
