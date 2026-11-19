@@ -21,7 +21,9 @@
     videos: '<rect x="6" y="3" width="12" height="18" rx="3"/><path d="M11 10l3 2-3 2z"/>',
     tax: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
     upload: '<path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/>',
-    pro: '<rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'
+    pro: '<rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+    trophy: '<path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/>',
+    flame: '<path d="M12 21c3.9 0 6.5-2.6 6.5-6.3 0-3.6-2.6-5.6-3.6-9.2-.9 2.7-2.7 3.6-3.6 4.5-.9-1.8-.9-2.7-.9-4.5C7.700 7.300 5.500 10.900 5.500 14.700 5.500 18.400 8.100 21 12 21z"/>'
   };
   var svg = function (name, size) { return '<svg width="' + (size || 22) + '" height="' + (size || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[name] + '</svg>'; };
 
@@ -294,6 +296,56 @@
     var lv = ok.filter(function (r) { return /live/i.test(r.ctype); }), vd = ok.filter(function (r) { return !/live/i.test(r.ctype); });
     A.livePer = lv.length ? sum(lv, earned) / lv.length : 0; A.vidPer = vd.length ? sum(vd, earned) / vd.length : 0; A.nLiveOrders = lv.length;
     var allLives = content.filter(function (c) { return /live/i.test(c.type); }); A.nLives = allLives.length; A.lives = allLives.sort(function (a, b) { return b.e - a.e; }).slice(0, 5);
+    // personal bests (paid + pending, by order date)
+    (function () {
+      var dk = function (d) { return +new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+      var DM = new Map(), DN = new Map(), OM = new Map();
+      ok.forEach(function (r) {
+        var k = dk(r.odate), e = earned(r);
+        DM.set(k, (DM.get(k) || 0) + e);
+        var o = DN.get(k) || {}; o[r.oid] = 1; DN.set(k, o);
+        var x = OM.get(r.oid) || { v: 0, d: r.odate, p: r.product }; x.v += e; OM.set(r.oid, x);
+      });
+      var best = function (it, val) { var b = null; it.forEach(function (x) { var v = val(x); if (v > 0 && (!b || v > b.v)) b = { v: v, x: x }; }); return b; };
+      var day = best(Array.from(DM.entries()), function (e) { return e[1]; });
+      var many = best(Array.from(DN.entries()), function (e) { return Object.keys(e[1]).length; });
+      var week = best(Array.from(W.values()), function (w) { return w.paid + w.owed; });
+      var order = best(Array.from(OM.values()), function (o) { return o.v; });
+      var vid = best(content.filter(function (c) { return !/live/i.test(c.type); }), function (c) { return c.e; });
+      var live = best(allLives, function (c) { return c.e; });
+      var B = { };
+      if (day) B.day = { v: day.v, d: new Date(day.x[0]) };
+      if (many) B.orders = { v: many.v, d: new Date(many.x[0]) };
+      if (week) B.week = { v: week.v, d: new Date(week.x.k) };
+      if (A.bestMonth && A.bestMonth.paid + A.bestMonth.owed > 0) B.month = { v: A.bestMonth.paid + A.bestMonth.owed, d: A.bestMonth.d };
+      if (order) B.order = { v: order.v, d: order.x.d, p: shortName(order.x.p) };
+      if (vid) B.video = { v: vid.v, d: vid.x.posted || null, p: shortName(vid.x.top) };
+      if (live) B.live = { v: live.v, d: live.x.posted || null, p: shortName(live.x.top) };
+      // streaks: days in a row with at least one sale
+      var keys = Array.from(DM.keys()).sort(function (a, b) { return a - b; });
+      var longest = null, run = 0, start = null, prev = null;
+      keys.forEach(function (k) {
+        var d = new Date(k);
+        if (prev != null && dk(new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1)) === k) run++; else { run = 1; start = d; }
+        if (!longest || run > longest.n) longest = { n: run, from: start, to: d };
+        prev = d;
+      });
+      if (longest && longest.n >= 2) B.streak = longest;
+      var lastKey = keys[keys.length - 1];
+      if (lastKey === dk(A.max) && run >= 2) B.current = run;
+      // lifetime milestones
+      var ms = [100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000], hit = [], cum = 0, mi = 0;
+      ok.slice().sort(function (a, b) { return a.odate - b.odate; }).forEach(function (r) {
+        cum += earned(r);
+        while (mi < ms.length && cum >= ms[mi]) { hit.push({ v: ms[mi], d: r.odate }); mi++; }
+      });
+      B.milestones = hit; B.total = cum; B.next = mi < ms.length ? ms[mi] : null;
+      // first month over a round number
+      var chron = allM.slice().sort(function (a, b) { return a.key - b.key; }), mm = null;
+      [10000, 5000, 2000, 1000, 500].some(function (lvl) { var f = chron.filter(function (m) { return m.paid + m.owed >= lvl; })[0]; if (f) { mm = { lvl: lvl, d: f.d }; return true; } return false; });
+      if (mm) B.monthMs = mm;
+      A.bests = B;
+    })();
     var vids = content.filter(function (c) { return !/live/i.test(c.type) && c.posted; });
     var PH = []; for (var p2 = 0; p2 < 7; p2++) PH.push([[], [], [], [], []]);
     vids.forEach(function (c) { PH[(c.posted.getDay() + 6) % 7][band(c.posted.getHours())].push(c.e); });
@@ -486,6 +538,7 @@
       var empty = A.months.filter(function (x) { return !x.n && !x.future; }).length;
       if (empty) out += '<p class="sub">' + empty + ' month' + (empty === 1 ? ' has' : 's have') + ' no data yet. <a href="#upload">Add older exports</a> to fill in your year.</p>';
       out += '</div>';
+      out += bestsCard(A, 300);
       var after = '';
       after += '<div class="grid2">';
       var b = A.buyBest;
@@ -591,6 +644,41 @@
     warn: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/>', flag: '<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>', pound: '<path d="M16 6.5A4 4 0 0 0 9 9v9"/><path d="M6 13h7"/><path d="M6 18h11"/>',
     up: '<path d="M4 17l6-6 4 4 6-7"/><path d="M14 8h6v6"/>', down: '<path d="M4 7l6 6 4-4 6 7"/><path d="M14 16h6v-6"/>'
   };
+  function kMoney(v) { return v >= 1000 ? '£' + (v / 1000) + 'k' : '£' + v; }
+  function bestsCard(A, delay) {
+    var B = A.bests; if (!B || !B.day) return '';
+    var cut = new Date(+A.max - 30 * DAY), isNew = function (d) { return d && d >= cut; };
+    var wd = function (d) { return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); };
+    var T = [];
+    T.push(['Best day', gbp(B.day.v), wd(B.day.d), B.day.d, 'dark']);
+    if (B.week) T.push(['Best week', gbp(B.week.v), 'Week of ' + fmtD(B.week.d), B.week.d]);
+    if (B.month) T.push(['Best month', gbp(B.month.v), MONTHS[B.month.d.getMonth()] + ' ' + B.month.d.getFullYear(), A.bestMonth.key === A.curMonth.key ? A.max : null]);
+    if (B.orders) T.push(['Most orders in a day', num(B.orders.v), wd(B.orders.d), B.orders.d]);
+    if (B.order) T.push(['Biggest single order', gbp(B.order.v), esc(B.order.p), B.order.d]);
+    if (B.video) T.push(['Best video', gbp(B.video.v), esc(B.video.p) + (B.video.d ? ', posted ' + fmtDs(B.video.d) : ''), B.video.d]);
+    if (B.live) T.push(['Best Live', gbp(B.live.v), esc(B.live.p) + (B.live.d ? ', ' + fmtDs(B.live.d) : ''), B.live.d]);
+    if (B.streak) T.push(['Longest selling streak', B.streak.n + ' days', (B.streak.from.getFullYear() === B.streak.to.getFullYear() ? fmtDs(B.streak.from) : fmtD(B.streak.from)) + ' to ' + fmtD(B.streak.to), B.streak.to]);
+    var nNew = T.filter(function (x) { return isNew(x[3]); }).length;
+    var out = '<div class="card big t a-in" style="animation-delay:' + (delay || 300) + 'ms"><div class="row-head"><h2>' + svg('trophy', 24) + ' Your personal bests</h2>' +
+      (nNew ? '<span class="badge pink">' + nNew + ' new this month</span>' : '') + '</div>' +
+      '<p class="sub">Records from every export you\'ve added, counting paid and pending commission. <b>New</b> means you set it in the last 30 days.</p>' +
+      '<div class="pbgrid">' + T.map(function (x, i) {
+        return '<div class="pb t a-pop' + (x[4] ? ' ' + x[4] : '') + '" style="animation-delay:' + ((delay || 300) + 120 + i * 60) + 'ms">' + (isNew(x[3]) ? '<span class="badge pink pb-new">New</span>' : '') +
+          '<p>' + x[0] + '</p><b>' + x[1] + '</b><span>' + x[2] + '</span></div>';
+      }).join('') + '</div>';
+    if (B.current) out += '<div class="alert pink t" style="margin-top:14px;display:flex;gap:10px;align-items:center">' + svg('flame', 22) + '<span><b>You\'ve made a sale every day for ' + B.current + ' days.</b> ' + (B.streak && B.current >= B.streak.n ? 'That\'s your best ever. Keep it going!' : (B.streak ? (B.streak.n - B.current + 1) + ' more days beats your record.' : 'Keep it going!')) + '</span></div>';
+    if (B.milestones.length) {
+      out += '<h3 class="pb-h">Milestones</h3><div class="ms-row">' + B.milestones.slice(-6).map(function (m, i) {
+        return '<span class="ms t a-pop" style="animation-delay:' + ((delay || 300) + 500 + i * 60) + 'ms"><b>' + kMoney(m.v) + ' earned</b><span>' + fmtD(m.d) + '</span></span>';
+      }).join('') + (B.monthMs ? '<span class="ms t a-pop" style="animation-delay:' + ((delay || 300) + 900) + 'ms"><b>First ' + kMoney(B.monthMs.lvl) + ' month</b><span>' + MONTHS[B.monthMs.d.getMonth()] + ' ' + B.monthMs.d.getFullYear() + '</span></span>' : '') + '</div>';
+    }
+    if (B.next) {
+      var prevMs = B.milestones.length ? B.milestones[B.milestones.length - 1].v : 0, pct = Math.max(2, Math.min(100, (B.total - prevMs) / (B.next - prevMs) * 100));
+      out += '<div style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:700"><span>Next: ' + kMoney(B.next) + ' earned</span><span>' + gbp(B.next - B.total) + ' to go</span></div>' +
+        '<div class="pbbar" style="margin-top:6px"><i style="width:' + pct.toFixed(1) + '%"></i></div></div>';
+    }
+    return out + '</div>';
+  }
   function insightsCard(A, pro) {
     var L = insights(A); if (!L.length) return '';
     var item = function (x, i) {
@@ -632,6 +720,7 @@
     var tease = A.months.filter(function (x) { return !x.current && !x.future; }).filter(function (x) { return x.owed > 20; }).sort(function (a, b2) { return b2.owed - a.owed; })[0];
     cards.push(locked('<h2>Your year</h2><div style="height:12px"></div>' + yearChart(A, 120, false), tease ? gbp(tease.owed) + ' still pending from ' + MONTHS[tease.d.getMonth()] : 'Your whole year in one view', 'Every month, paid, pending and lost'));
     if (A.nInel) { var top = A.challenge[0]; cards.push(locked('<h2>Worth checking</h2><div style="margin-top:10px">' + [1, 2, 3].map(function () { return '<div class="list-row"><b>Product name here</b><p class="topline">Shop name, 12 orders</p></div>'; }).join('') + '</div>', gbp(A.lostInel) + ' in orders worth chasing', top ? 'Biggest: ' + gbp(top.est) + ' on ' + esc(shortName(top.product)) : 'Lost orders to raise with TikTok')); }
+    if (A.bests && A.bests.day) cards.push(locked('<h2>Your personal bests</h2><div class="pbgrid" style="margin-top:10px">' + ['Best day', 'Best week', 'Best month', 'Best video'].map(function (l) { return '<div class="pb t"><p>' + l + '</p><b>£0,000</b><span>Date here</span></div>'; }).join('') + '</div>', 'Your best day: ' + gbp(A.bests.day.v), 'Records, streaks and milestones'));
     cards.push(locked('<h2>All shops</h2>' + A.shops.slice(0, 5).map(function (s) { return '<div class="list-row"><b>' + esc(s.name) + '</b> ' + gbp(s.earned) + '</div>'; }).join(''), 'Which shops lose your orders', 'Lost rates, UK vs overseas sellers, new shops'));
     cards.push(locked('<h2>Your videos</h2><div style="height:150px"></div>', Math.round(A.evergreen) + '% came from older videos', 'Best posting times, evergreen videos, Lives'));
     cards.push(locked('<h2>Tax year</h2><div class="receipt" style="height:150px;margin-top:10px"></div>', 'Your tax year, sorted', 'UK tax year totals for your accountant'));
@@ -758,7 +847,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 19 Nov, 14:53</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 19 Nov, 16:54</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
