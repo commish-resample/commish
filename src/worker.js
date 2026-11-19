@@ -416,15 +416,19 @@ async function adminStats(req, env) {
   const u = await currentUser(req, env);
   if (!u || !isAdmin(env, u.email)) return json({ error: 'not found' }, 404);
   const t = now(), day = 86400;
+  // UK calendar day: seconds since London midnight, and London's offset from UTC
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(t * 1000)).map((x) => [x.type, x.value]));
+  const ukMidnight = t - (+parts.hour * 3600 + +parts.minute * 60 + +parts.second);
+  const offset = Math.round((Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second) / 1000 - t) / 60) * 60;
   const q = (sql, ...b) => env.DB.prepare(sql).bind(...b);
   const [tot, d1, d7, d30, act7, plans, perDay, recent] = await env.DB.batch([
     q('SELECT COUNT(*) AS n FROM users'),
-    q('SELECT COUNT(*) AS n FROM users WHERE created_at > ?', t - day),
+    q('SELECT COUNT(*) AS n FROM users WHERE created_at >= ?', ukMidnight),
     q('SELECT COUNT(*) AS n FROM users WHERE created_at > ?', t - 7 * day),
     q('SELECT COUNT(*) AS n FROM users WHERE created_at > ?', t - 30 * day),
     q('SELECT COUNT(*) AS n FROM users WHERE last_seen > ?', t - 7 * day),
     q(`SELECT plan, sub_interval, cancel_at_end, sub_status, COUNT(*) AS n FROM users GROUP BY plan, sub_interval, cancel_at_end, sub_status`),
-    q(`SELECT strftime('%Y-%m-%d', created_at, 'unixepoch') AS d, COUNT(*) AS n FROM users WHERE created_at > ? GROUP BY d ORDER BY d`, t - 30 * day),
+    q(`SELECT strftime('%Y-%m-%d', created_at + ?, 'unixepoch') AS d, COUNT(*) AS n FROM users WHERE created_at > ? GROUP BY d ORDER BY d`, offset, t - 30 * day),
     q('SELECT email, plan, sub_interval, cancel_at_end, sub_status, created_at, last_seen FROM users ORDER BY created_at DESC LIMIT 100')
   ]);
   const gifted = String(env.PRO_EMAILS || '').split(',').map((x) => x.trim()).filter(Boolean).length;

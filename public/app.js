@@ -758,7 +758,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 19 Nov, 12:57</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 19 Nov, 13:03</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
@@ -1050,7 +1050,7 @@
   function viewAdmin(d) {
     var g = d.signups, p = d.pro;
     var days = []; var map = {}; d.perDay.forEach(function (x) { map[x.d] = x.n; });
-    for (var i = 29; i >= 0; i--) { var dt = new Date(Date.now() - i * 864e5); var k = dt.toISOString().slice(0, 10); days.push({ k: k, n: map[k] || 0, dt: dt }); }
+    for (var i = 29; i >= 0; i--) { var dt = new Date(Date.now() - i * 864e5); var k = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0'); days.push({ k: k, n: map[k] || 0, dt: dt }); }
     var max = Math.max.apply(null, days.map(function (x) { return x.n; }).concat([1]));
     var bars = '<div class="adm-bars" role="img" aria-label="Sign-ups per day, last 30 days">' + days.map(function (x) {
       return '<span class="adm-bar t" style="height:' + Math.max(3, Math.round(x.n / max * 100)) + '%" title="' + fmtDs(x.dt) + ': ' + x.n + '"></span>';
