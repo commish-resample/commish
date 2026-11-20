@@ -5,6 +5,7 @@ Scripts that make Commish TikTok clips in the Commish design system style (1080 
 - render.py: shared drawing helpers (yellow glow background, glass phone, glass caption cards, logo coin, easing) and the how-to export video.
 - promo.py: the 30s promo. Imports render.py; device mockups (phone, laptop), captions, beat-synced scenes, renders scenes in parallel then joins them.
 - personal_bests.py: the 26s personal bests clip, built on promo.py.
+- lost_commission.py: the 26s lost commission clip (shops most lost, Worth checking, copy order IDs).
 - music.py: synthesised deep-house groove (set BARS: 2s per bar at 120 BPM). Normalise with ffmpeg loudnorm I=-14.
 - share.py: the 1200 x 630 share image.
 

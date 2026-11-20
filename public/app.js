@@ -157,9 +157,10 @@
         var est = Math.round(base * rate * 100) / 100;
         var age = (now - od) / DAY;
         var overseas = /^(CN|HK)/.test(s[1]);
-        var lostP = overseas ? 0.18 : 0.08;
+        var problem = p[0] === 'Fairy light curtain' || p[0] === 'Solar panel kit';
+        var lostP = problem ? 0.42 : overseas ? 0.16 : 0.07;
         var status, sdate = null, actual = null, refunded = 0;
-        if (rnd() < (age > 20 ? lostP : lostP / 3)) { status = 'Ineligible'; actual = 0; refunded = items; }
+        if (rnd() < (age > 20 ? lostP : lostP / 3)) { status = 'Ineligible'; actual = 0; refunded = rnd() < (problem ? 0.1 : overseas ? 0.45 : 0.6) ? items : 0; }
         else if (age > 15 + rnd() * 8) { status = 'Settled'; sdate = new Date(+od + (15 + Math.floor(rnd() * 6)) * DAY); actual = est; }
         else status = 'Pending';
         oid += BigInt(1 + Math.floor(rnd() * 1e9));
@@ -851,7 +852,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 19 Nov, 20:44</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 20 Nov, 18:14</p>';
     navs(r === 'reveal' ? 'home' : r);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
