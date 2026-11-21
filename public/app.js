@@ -988,8 +988,9 @@
     ctx.fillStyle = bg === YC.ink ? YC.ink : fg; yFont(ctx, 800, 28); ctx.textAlign = 'center'; ctx.fillText('£', YX + 46, 342); ctx.textAlign = 'left';
     ctx.fillStyle = bg; yFont(ctx, 800, 44); ctx.fillText(label, YX + 80, 348);
     // footer
-    ctx.fillStyle = fg; yFont(ctx, 800, 44); ctx.fillText('commish.fyi', YX, 1500);
-    yFont(ctx, 600, 34); ctx.globalAlpha = 0.8; ctx.fillText('Your Year in Sales', YX, 1548 - 4); ctx.globalAlpha = 1;
+    yFont(ctx, 600, 40); var p1 = 'Get yours free at ', w1 = ctx.measureText(p1).width; yFont(ctx, 800, 40); var w2 = ctx.measureText('commish.fyi').width;
+    ctx.fillStyle = fg; yRound(ctx, YX, 1450, w1 + w2 + 72, 84, 42); ctx.fill();
+    ctx.fillStyle = bg; yFont(ctx, 600, 40); ctx.fillText(p1, YX + 36, 1506); yFont(ctx, 800, 40); ctx.fillStyle = bg === YC.ink ? YC.ink : (bg === YC.pink || bg === YC.lilac ? YC.yellow : YC.pink); ctx.fillText('commish.fyi', YX + 36 + w1, 1506);
     return T;
   }
   function yBars(ctx, Y, x, y, w, h, fg, hi, t, labels) {
@@ -1030,13 +1031,13 @@
       sub(hide ? num(Y.bestDay.n) + ' paid and pending orders in a single day.' : money(Y.bestDay.v) + ' in commission from ' + num(Y.bestDay.n) + ' orders, in a single day.', 1110, 3);
     } else if (i === 4 && Y.topProduct) {
       label('Your top seller', 600);
-      ctx.fillStyle = fg; var ny = yLines(ctx, shortName(Y.topProduct.name), YX - 4, 740, 800, 104, YMAXW, 112, 4);
+      ctx.fillStyle = fg; var ny = yLines(ctx, shortName(Y.topProduct.name), YX - 4, 740, 800, 104, YMAXW, 112, 3);
       sub(hide ? num(Y.topProduct.items) + ' sold this year.' : money(Y.topProduct.v) + ' in commission from ' + num(Y.topProduct.items) + ' sold.', ny + 40, 2);
     } else if (i === 5 && Y.topShop) {
       label('Your number one shop', 600);
-      ctx.fillStyle = fg; var sy = yLines(ctx, Y.topShop.name, YX - 4, 740, 800, 110, YMAXW, 118, 3);
+      ctx.fillStyle = fg; var sy = yLines(ctx, Y.topShop.name, YX - 4, 740, 800, 110, YMAXW, 118, 2);
       sub(hide ? num(Y.topShop.n) + ' orders through this shop.' : money(Y.topShop.earned) + ' in commission from ' + num(Y.topShop.n) + ' orders.', sy + 40, 2);
-      hl('You sold for ' + num(Y.shops) + ' shops', Math.max(sy + 220, 1250));
+      hl('You sold for ' + num(Y.shops) + ' shops', Math.max(sy + 200, 1230));
     } else if (i === 6) {
       if (Y.streak) { label('Your longest streak', 600); big(count(Y.streak.n), 880, 300); ctx.fillStyle = fg; yFont(ctx, 800, 90); ctx.fillText('days in a row', YX, 1000);
         sub('With a sale every single day, from ' + fmtDs(Y.streak.from) + ' to ' + fmtDs(Y.streak.to) + '.', 1100, 2); }
@@ -1044,7 +1045,7 @@
     } else if (i === 7) {
       label('Your seller type', 600);
       ctx.fillStyle = ac; var py = yLines(ctx, Y.persona[0], YX - 6, 790, 800, 170, YMAXW, 165, 2);
-      sub(Y.persona[1], py + 10, 4);
+      sub(Y.persona[1], py + 10, 3);
     } else if (i === 9) {
       ctx.fillStyle = fg; yFont(ctx, 800, 76); ctx.fillText('Your top ' + Y.top5.length + ' sellers', YX - 4, 480);
       var cutT = function (txt, maxW) { var v = String(txt); if (ctx.measureText(v).width <= maxW) return v; while (v.length > 2 && ctx.measureText(v + '…').width > maxW) v = v.slice(0, -1); return v.replace(/\s+$/, '') + '…'; };
@@ -1140,7 +1141,7 @@
   function openStory() {
     var Y = yearData(); if (!Y) { toast('Add your exports first, then tap See my year.'); location.hash = '#upload'; return; }
     try { document.fonts && document.fonts.load('800 100px "Bricolage Grotesque"', '£0'); } catch (e) {}
-    ST = { Y: Y, list: yAvailable(Y), i: 0, hide: false, back: document.activeElement, raf: 0 };
+    ST = { Y: Y, list: yAvailable(Y), i: 0, hide: false, back: document.activeElement, raf: 0, cache: {}, ready: {} };
     var host = document.createElement('div'); host.id = 'story'; host.setAttribute('role', 'dialog'); host.setAttribute('aria-modal', 'true'); host.setAttribute('aria-label', 'Commish ' + Y.yr + ': Your Year in Sales');
     host.innerHTML = '<div class="st-top"><div class="st-prog">' + ST.list.map(function () { return '<i><b></b></i>'; }).join('') + '</div>' +
       '<div class="st-bar"><button class="st-chip" data-st="hide" aria-pressed="false">Hide £</button><button class="st-x" data-st="close" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>' +
@@ -1157,7 +1158,7 @@
     }, { passive: true });
     document.addEventListener('keydown', storyKey);
     window.addEventListener('resize', storySize);
-    storySize(); storyShow(0);
+    storySize(); storyShow(0); yWarm();
     var x = host.querySelector('.st-x'); if (x) x.focus();
   }
   function closeStory() {
@@ -1177,10 +1178,12 @@
     c.setAttribute('aria-label', YALT[card]);
     $('#story').querySelectorAll('.st-prog i').forEach(function (x, j) { x.className = j < ST.i ? 'done' : j === ST.i ? 'on' : ''; });
     var last = ST.i === ST.list.length - 1, pro = S.plan === 'pro';
-    var foot = '<button class="btn st-share" data-st="share">' + (last ? 'Share my year' : 'Share this card') + '</button>';
+    var n = ST.list.length;
+    var foot = last ? '<button class="btn st-share" data-st="saveall">Save all ' + n + ' cards for your Story</button><button class="btn ghost" data-st="share">Save just this one</button>'
+      : '<div class="st-row"><button class="btn st-share" data-st="share">Save this card</button><button class="btn ghost" data-st="saveall">Save all ' + n + '</button></div>';
     if (last) foot += pro ? '<button class="btn ghost" data-st="close">Back to my dashboard</button>' : '<button class="btn pinky" data-st="pro">Want this every month? Go Pro, £2.99</button>';
     if (ST.i === 0 && ST.Y.gap) foot = '<p class="st-note">Your exports start in ' + MONTHS[ST.Y.firstMonth.getMonth()] + '. <button class="linkish" data-st="add">Add older exports</button> to fill in your whole year.</p>' + foot;
-    if (ST.i === 0) foot += '<p class="st-hint">Tap or swipe to go through your year</p>';
+    if (ST.i === 0) foot += '<p class="st-hint">Tap or swipe to go through your year. Save the cards and post them to your Story in order.</p>';
     $('#story .st-foot').innerHTML = foot;
     storySize();
     cancelAnimationFrame(ST.raf);
@@ -1200,8 +1203,9 @@
     if (a === 'close') closeStory();
     else if (a === 'next') { if (ST.i < ST.list.length - 1) storyShow(ST.i + 1); }
     else if (a === 'prev') storyShow(ST.i - 1);
-    else if (a === 'hide') { ST.hide = !ST.hide; b.setAttribute('aria-pressed', ST.hide); b.textContent = ST.hide ? 'Show £' : 'Hide £'; storyShow(ST.i); }
+    else if (a === 'hide') { ST.hide = !ST.hide; b.setAttribute('aria-pressed', ST.hide); b.textContent = ST.hide ? 'Show £' : 'Hide £'; storyShow(ST.i); yWarm(); }
     else if (a === 'share') storyShare(b);
+    else if (a === 'saveall') storySaveAll(b);
     else if (a === 'pro') { closeStory(); var u = document.createElement('button'); u.dataset.action = 'unlock'; u.hidden = true; document.body.appendChild(u); u.click(); u.remove(); }
     else if (a === 'add') { closeStory(); location.hash = '#upload'; }
   }
@@ -1211,21 +1215,49 @@
     else if (e.key === 'ArrowRight') { if (ST.i < ST.list.length - 1) storyShow(ST.i + 1); }
     else if (e.key === 'ArrowLeft') storyShow(ST.i - 1);
   }
-  function storyShare(btn) {
-    var card = ST.list[ST.i], c = document.createElement('canvas'); c.width = YW; c.height = YH;
-    yDraw(c.getContext('2d'), card, ST.Y, ST.hide, 1);
-    var name = 'commish-' + ST.Y.yr + '-' + (card === 8 ? 'my-year' : 'card-' + (ST.i + 1)) + '.png';
-    c.toBlob(function (blob) {
-      if (!blob) { toast('Sorry, that image could not be made.'); return; }
-      var file = null; try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
-      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: 'Commish ' + ST.Y.yr }).catch(function () {});
-      } else {
-        var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(function () { URL.revokeObjectURL(url); }, 4000); toast('Saved ' + name + '. Post it to your Story!');
-      }
-    }, 'image/png');
+  // Images are made ahead of time so the share sheet opens straight from the tap (iPhones insist on that).
+  var YSLUG = { 0: 'intro', 1: 'total', 2: 'best-month', 3: 'biggest-day', 4: 'top-seller', 9: 'top-5', 5: 'top-shop', 6: 'streak', 7: 'seller-type', 8: 'my-year' };
+  function yName(k) { var card = ST.list[k]; return 'commish-' + ST.Y.yr + '-' + String(k + 1).padStart(2, '0') + '-' + (YSLUG[card] || 'card') + '.png'; }
+  function yBlob(k) {
+    var key = ST.list[k] + (ST.hide ? 'h' : '');
+    if (!ST.cache[key]) ST.cache[key] = new Promise(function (res) {
+      var c = document.createElement('canvas'); c.width = YW; c.height = YH; yDraw(c.getContext('2d'), ST.list[k], ST.Y, ST.hide, 1);
+      c.toBlob(function (bl) { if (bl) ST.ready[key] = bl; res(bl); }, 'image/png');
+    });
+    return ST.cache[key];
   }
+  function yReady(k) { return ST.ready[ST.list[k] + (ST.hide ? 'h' : '')]; }
+  function yWarm() {
+    if (!ST) return; var hideNow = ST.hide, ks = [ST.i].concat(ST.list.map(function (x, j) { return j; }));
+    var go = function () { if (!ST || ST.hide !== hideNow || !ks.length) return; yBlob(ks.shift()).then(function () { setTimeout(go, 30); }); };
+    var start = function () { if (document.fonts && document.fonts.load) document.fonts.load('800 100px "Bricolage Grotesque"', '£0').then(go, go); else go(); };
+    setTimeout(start, 300);
+  }
+  function yFiles(ks) { try { return ks.map(function (k) { return new File([yReady(k)], yName(k), { type: 'image/png' }); }); } catch (e) { return null; } }
+  function yDownload(ks) {
+    ks.forEach(function (k, j) { setTimeout(function () {
+      var url = URL.createObjectURL(yReady(k)), a = document.createElement('a'); a.href = url; a.download = yName(k); document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 6000);
+    }, j * 450); });
+  }
+  function ySend(ks, btn, label) {
+    if (!ST) return;
+    if (!ks.every(function (k) { return yReady(k); })) {
+      var old = btn.textContent; btn.disabled = true; btn.textContent = 'Getting your cards ready…';
+      Promise.all(ks.map(yBlob)).then(function () { if (!ST) return; btn.disabled = false; btn.textContent = 'Ready. Tap again to save'; btn.dataset.again = old; });
+      return;
+    }
+    if (btn.dataset.again) { btn.textContent = btn.dataset.again; delete btn.dataset.again; }
+    var files = yFiles(ks);
+    if (files && navigator.canShare && navigator.canShare({ files: files })) {
+      navigator.share({ files: files }).then(function () { if (ks.length > 1) toast('Post them to your Story in order, starting with 01.'); }, function () {});
+    } else {
+      yDownload(ks);
+      toast(ks.length > 1 ? 'Saving ' + ks.length + ' cards. Post them to your Story in order, starting with 01.' : 'Saved ' + yName(ks[0]) + '. Post it to your Story!');
+    }
+  }
+  function storyShare(btn) { ySend([ST.i], btn); }
+  function storySaveAll(btn) { ySend(ST.list.map(function (x, j) { return j; }), btn); }
   function yearCard(where) {
     var Y = yearData(); if (!Y) return '';
     var partial = Y.gap ? '<p style="margin:0;font-size:14px;opacity:.9">Covers ' + MONTHS[Y.firstMonth.getMonth()] + ' to ' + MONTHS[Y.lastMonth.getMonth()] + '. <a href="#upload" style="color:inherit;font-weight:800">Add older exports</a> for your whole year.</p>' : '';
@@ -1285,7 +1317,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 11:20</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 11:32</p>';
     navs(r === 'reveal' ? 'home' : r);
     var fc = document.querySelector('.fchip[aria-pressed="true"]'); if (fc) fc.parentNode.scrollLeft = Math.max(0, fc.offsetLeft - fc.parentNode.offsetLeft - 8);
     bindDrop();

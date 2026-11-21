@@ -422,3 +422,4 @@ html,body{overflow-x:clip}
 @media print{#story{display:none}}
 .st-foot .st-share{background:#FFE45C;background-image:none;color:#1B1340;border:0;box-shadow:none}
 .st-stage{touch-action:none}#story{overscroll-behavior:contain}
+.st-row{display:flex;gap:8px}.st-row .btn{flex:1}.st-row .btn.ghost{flex:0 0 auto;padding:0 18px}.st-foot .btn[disabled]{opacity:.7}
