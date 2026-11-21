@@ -914,7 +914,8 @@
       var e = A.earned(r), m = Y.months[r.odate.getMonth()]; m.v += e; m.n++;
       var dk0 = r.odate.getFullYear() + '-' + r.odate.getMonth() + '-' + r.odate.getDate(); dayKeys[dk0] = 1;
       (dayOrders[dk0] = dayOrders[dk0] || {})[r.oid] = 1;
-      var p = prods[r.product] || (prods[r.product] = { name: r.product, v: 0, items: 0, shop: r.shop }); p.v += e; p.items += r.items || 0;
+      var p = prods[r.product] || (prods[r.product] = { name: r.product, v: 0, items: 0, shop: r.shop, vids: {}, lives: {} }); p.v += e; p.items += r.items || 0;
+      if (r.cid) (/live/i.test(r.ctype) ? p.lives : p.vids)[r.cid] = 1;
       if (/live/i.test(r.ctype)) liveE += e;
       var h = r.odate.getHours(); if (h >= 21 || h < 3) nightE += e;
       var wd = r.odate.getDay(); if (wd === 0 || wd === 6) weekendE += e;
@@ -930,6 +931,7 @@
     Y.streak = B.streak || null;
     var plist = Object.keys(prods).map(function (k) { return prods[k]; }).sort(function (a, b) { return b.v - a.v; });
     Y.topProduct = plist[0]; Y.topShop = A.shops[0];
+    Y.top5 = plist.slice(0, 5).filter(function (x) { return x.v > 0; }).map(function (x) { return { name: x.name, v: x.v, items: x.items, vids: Object.keys(x.vids).length, lives: Object.keys(x.lives).length }; });
     var E = Y.earned || 1, pct = function (v) { return Math.round(v / E * 100); };
     // seller type: first match wins
     var P = null;
@@ -965,7 +967,7 @@
   function yEase(t) { return 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3); }
   var YTHEME = [
     [YC.ink, YC.yellow, YC.pink], [YC.yellow, YC.ink, YC.pink], [YC.pink, YC.ink, YC.yellow], [YC.ink, YC.yellow, YC.pink],
-    [YC.yellow, YC.ink, YC.pink], [YC.lilac, YC.ink, YC.yellow], [YC.pink, YC.ink, YC.yellow], [YC.ink, YC.yellow, YC.pink], [YC.yellow, YC.ink, YC.pink]
+    [YC.yellow, YC.ink, YC.pink], [YC.lilac, YC.ink, YC.yellow], [YC.pink, YC.ink, YC.yellow], [YC.ink, YC.yellow, YC.pink], [YC.yellow, YC.ink, YC.pink], [YC.ink, YC.yellow, YC.pink]
   ];
   function yBase(ctx, i, Y) {
     var T = YTHEME[i], bg = T[0], fg = T[1], ac = T[2];
@@ -1007,7 +1009,7 @@
     var label = function (s, y) { ctx.fillStyle = fg; yFont(ctx, 700, 62); return yLines(ctx, s, YX, y, 700, 62, YMAXW, 76); };
     var big = function (s, y, size, col) { ctx.fillStyle = col || fg; var sz = yFit(ctx, s, 800, size || 230, YMAXW, 80); ctx.fillText(s, YX - 6, y); return sz; };
     var sub = function (s, y, maxLines) { ctx.fillStyle = fg; ctx.globalAlpha = 0.9; var yy = yLines(ctx, s, YX, y, 600, 50, YMAXW, 64, maxLines); ctx.globalAlpha = 1; return yy; };
-    var OY = i === 8 || i === 0 || i === 7 ? (i === 7 ? 60 : 0) : 130; ctx.save(); ctx.translate(0, OY);
+    var OY = i === 8 || i === 9 || i === 0 || i === 7 ? (i === 7 ? 60 : 0) : 130; ctx.save(); ctx.translate(0, OY);
     var hl = function (s, y) { yFont(ctx, 800, 50); var w = ctx.measureText(s).width + 56; ctx.fillStyle = ac; yRound(ctx, YX, y - 52, w, 76, 38); ctx.fill(); ctx.fillStyle = bg === YC.ink ? YC.ink : YC.ink; ctx.fillText(s, YX + 28, y); };
     if (i === 0) {
       ctx.fillStyle = fg; yFont(ctx, 800, 200); ctx.fillText('Your', YX - 8, 700); ctx.fillText('year in', YX - 8, 890);
@@ -1043,6 +1045,30 @@
       label('Your seller type', 600);
       ctx.fillStyle = ac; var py = yLines(ctx, Y.persona[0], YX - 6, 790, 800, 170, YMAXW, 165, 2);
       sub(Y.persona[1], py + 10, 4);
+    } else if (i === 9) {
+      ctx.fillStyle = fg; yFont(ctx, 800, 76); ctx.fillText('Your top ' + Y.top5.length + ' sellers', YX - 4, 480);
+      var cutT = function (txt, maxW) { var v = String(txt); if (ctx.measureText(v).width <= maxW) return v; while (v.length > 2 && ctx.measureText(v + '…').width > maxW) v = v.slice(0, -1); return v.replace(/\s+$/, '') + '…'; };
+      var plural = function (n, w) { return num(n) + ' ' + w + (n === 1 ? '' : 's'); };
+      Y.top5.forEach(function (x, k) {
+        var y0 = 512 + k * 182, h = 168, a = reduceMotion ? 1 : Math.max(0, Math.min(1, t * 2 - k * 0.18));
+        if (a <= 0) return;
+        ctx.save(); ctx.globalAlpha = a; ctx.translate((1 - yEase(a)) * -60, 0);
+        ctx.fillStyle = k === 0 ? 'rgba(255,111,181,.22)' : 'rgba(255,255,255,.08)'; yRound(ctx, YX, y0, YMAXW, h, 40); ctx.fill();
+        ctx.fillStyle = k === 0 ? YC.pink : YC.yellow; ctx.beginPath(); ctx.arc(YX + 70, y0 + h / 2, 44, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = YC.ink; yFont(ctx, 800, 50); ctx.textAlign = 'center'; ctx.fillText(String(k + 1), YX + 70, y0 + h / 2 + 18); ctx.textAlign = 'left';
+        var tx = YX + 140, tw2 = YMAXW - 170;
+        ctx.fillStyle = YC.yellow; yFont(ctx, 800, 40); var NL = yWrap(ctx, shortName(x.name), tw2);
+        if (NL.length > 2) { NL = NL.slice(0, 2); NL[1] = cutT(NL[1] + ' …', tw2).replace(/ …$/, '…'); }
+        var sy0 = NL.length === 1 ? y0 + 128 : y0 + 150;
+        NL.forEach(function (l, j) { ctx.fillText(cutT(l, tw2), tx, (NL.length === 1 ? y0 + 70 : y0 + 56) + j * 46); });
+        ctx.fillStyle = YC.pink; yFont(ctx, 800, 38); var lead = hide ? num(x.items) + ' sold' : gbp(x.v * e); ctx.fillText(lead, tx, sy0);
+        var lw = ctx.measureText(lead).width;
+        var bits = []; if (x.vids) bits.push(plural(x.vids, 'video')); if (x.lives) bits.push(plural(x.lives, 'Live'));
+        var rest = bits.length ? bits.join(', ') : 'showcase sales';
+        if (!hide) rest = 'from ' + rest;
+        ctx.fillStyle = YC.white; ctx.globalAlpha = a * 0.85; yFont(ctx, 600, 32); ctx.fillText(cutT(rest, tw2 - lw - 16), tx + lw + 16, sy0 - 1);
+        ctx.restore();
+      });
     } else if (i === 8) {
       // summary: bubbles and tiles, made to be screenshotted
       var pop = function (k, cx, cy, draw) {
@@ -1107,7 +1133,7 @@
     ctx.restore();
   }
   function yAvailable(Y) {
-    var L = [0, 1, 2]; if (Y.bestDay) L.push(3); if (Y.topProduct) L.push(4); if (Y.topShop) L.push(5); L.push(6, 7, 8); return L;
+    var L = [0, 1, 2]; if (Y.bestDay) L.push(3); if (Y.topProduct) L.push(4); if (Y.top5 && Y.top5.length >= 3) L.push(9); if (Y.topShop) L.push(5); L.push(6, 7, 8); return L;
   }
 
   var ST = null;
@@ -1144,7 +1170,7 @@
     var st = $('#story .st-stage'), c = $('#story canvas'); if (!st || !c) return;
     var w = st.clientWidth, h = st.clientHeight, cw = Math.min(w, h * 9 / 16); c.style.width = Math.floor(cw) + 'px'; c.style.height = Math.floor(cw * 16 / 9) + 'px';
   }
-  var YALT = ['The start of your year in sales', 'Your total for the year', 'Your best month', 'Your biggest day', 'Your top seller', 'Your number one shop', 'Your selling streak', 'Your seller type', 'Your year at a glance'];
+  var YALT = ['The start of your year in sales', 'Your total for the year', 'Your best month', 'Your biggest day', 'Your top seller', 'Your number one shop', 'Your selling streak', 'Your seller type', 'Your year at a glance', 'Your top 5 sellers'];
   function storyShow(k) {
     if (!ST) return; ST.i = Math.max(0, Math.min(ST.list.length - 1, k));
     var card = ST.list[ST.i], c = $('#story canvas'), ctx = c.getContext('2d');
@@ -1259,7 +1285,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 11:15</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 11:20</p>';
     navs(r === 'reveal' ? 'home' : r);
     var fc = document.querySelector('.fchip[aria-pressed="true"]'); if (fc) fc.parentNode.scrollLeft = Math.max(0, fc.offsetLeft - fc.parentNode.offsetLeft - 8);
     bindDrop();
