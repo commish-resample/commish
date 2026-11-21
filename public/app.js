@@ -582,6 +582,7 @@
       return '<div class="file t' + (f.error ? ' err' : '') + '"><b>' + esc(f.name) + '</b><span>' + (f.error ? esc(f.error) : num(f.rows.length) + ' orders, ' + fmtDs(f.min) + ' to ' + fmtDs(f.max)) + '</span></div>';
     }).join('') + '</div>' + mergeNote(g) : '';
     return '<section class="a-in"><h1>Let\'s find your commish</h1><p class="sub" style="font-size:17px;max-width:560px">Upload your TikTok affiliate orders export and see what you\'ve earned, what\'s still owed and what\'s working.</p></section>' +
+      (g.length ? yearCard() : '<div class="card dark yearcard t a-in"><div><p class="yc-kick">New · Free</p><h2>Commish ' + new Date().getFullYear() + ': Your Year in Sales</h2><p style="margin:6px 0 0;font-size:15px;line-height:1.4">See your year as a story you can share. Add every export from this year (each one covers up to 90 days, so about four), then tap <b>See my year</b>.</p></div></div>') +
       '<div class="grid2">' +
       '<div class="card t a-in" style="display:flex;gap:14px;animation-delay:100ms"><button class="video t" data-action="video" aria-label="Watch the how-to video full size">' + '<video src="' + VID + '" poster="' + VID_POSTER + '" muted loop playsinline preload="metadata"' + (reduceMotion ? '' : ' autoplay') + ' aria-hidden="true" tabindex="-1"></video>' + '<span class="vbadge"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>Watch</span></button>' +
       '<div class="steps"><p style="margin:0;font-size:19px;font-weight:800">How to export</p><div class="step"><i class="t">1</i><span>In TikTok, go to your profile and tap <b>TikTok Studio</b></span></div><div class="step"><i class="t">2</i><span>Open <b>TikTok Shop for Creators</b>, then <b>Earnings</b></span></div><div class="step"><i class="t">3</i><span>Tap <b>Affiliate orders</b>, then the download arrow at the top right</span></div><div class="step"><i class="t">4</i><span>Choose <b>Custom</b>, pick up to 90 days and tap <b>Confirm</b></span></div><div class="step"><i class="t">5</i><span>When it says <b>File ready</b>, tap download</span></div><div class="step"><i class="t">6</i><span>Tap Share, then <b>Save to Files</b> or <b>Mail</b> it to yourself</span></div><div class="then"><span class="wide">Then drop it in here</span><span class="narrow">Then drop it below</span><svg class="squig squig-up" width="190" height="80" viewBox="0 0 190 80" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="sq-line" pathLength="1" d="M4 66C22 38 42 38 46 54C50 70 28 72 34 56C42 36 80 68 118 56C148 46 166 32 179 9"/><path class="sq-head" pathLength="1" d="M167.5 14.2L180 8L181.6 21.9"/></svg><svg class="squig squig-down" width="96" height="46" viewBox="0 0 96 46" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="sq-line" pathLength="1" d="M4 30C14 8 30 4 34 18C38 32 22 38 28 26C34 14 52 34 66 28C76 24 82 20 90 22"/><path class="sq-head" pathLength="1" d="M80 13L91 22L80 31"/></svg></div></div></div>' +
@@ -890,6 +891,278 @@
     return out;
   }
 
+  // ---------- Commish 2026: Your Year in Sales (free for everyone) ----------
+  // Uses every export added, whatever the plan. Cards are drawn on a canvas so the
+  // picture you see is exactly the picture you share. Nothing leaves the device.
+  function yearData() {
+    var g = goodFiles(); if (!g.length) return null;
+    var all = merge(g).rows; if (!all.length) return null;
+    var maxT = Math.max.apply(null, all.map(function (r) { return +r.odate; })), mx = new Date(maxT), yr = mx.getFullYear();
+    if (mx.getMonth() === 0 && all.some(function (r) { return r.odate.getFullYear() === yr - 1; })) yr--;
+    var rows = all.filter(function (r) { return r.odate.getFullYear() === yr; });
+    if (!rows.length) return null;
+    var A = analyse(rows), ok = rows.filter(function (r) { return r.status !== 'Ineligible'; });
+    if (!ok.length) return null;
+    var Y = { yr: yr, A: A, earned: A.paid + A.owed };
+    var oids = {}; ok.forEach(function (r) { oids[r.oid] = 1; }); Y.orders = Object.keys(oids).length;
+    Y.items = ok.reduce(function (t, r) { return t + (r.items || 0); }, 0);
+    Y.shops = A.shops.filter(function (s) { return s.earned > 0; }).length;
+    // months
+    Y.months = []; for (var i = 0; i < 12; i++) Y.months.push({ v: 0, n: 0, d: new Date(yr, i, 1) });
+    var dayKeys = {}, dayOrders = {}, prods = {}, liveE = 0, nightE = 0, weekendE = 0;
+    ok.forEach(function (r) {
+      var e = A.earned(r), m = Y.months[r.odate.getMonth()]; m.v += e; m.n++;
+      var dk0 = r.odate.getFullYear() + '-' + r.odate.getMonth() + '-' + r.odate.getDate(); dayKeys[dk0] = 1;
+      (dayOrders[dk0] = dayOrders[dk0] || {})[r.oid] = 1;
+      var p = prods[r.product] || (prods[r.product] = { name: r.product, v: 0, items: 0, shop: r.shop }); p.v += e; p.items += r.items || 0;
+      if (/live/i.test(r.ctype)) liveE += e;
+      var h = r.odate.getHours(); if (h >= 21 || h < 3) nightE += e;
+      var wd = r.odate.getDay(); if (wd === 0 || wd === 6) weekendE += e;
+    });
+    Y.saleDays = Object.keys(dayKeys).length;
+    var covered = Y.months.filter(function (m) { return m.n; });
+    Y.firstMonth = covered[0].d; Y.lastMonth = covered[covered.length - 1].d;
+    var bm = Y.months.slice().sort(function (a, b) { return b.v - a.v; })[0]; Y.bestMonth = bm;
+    Y.bestMonthShare = Y.earned ? bm.v / Y.earned * 100 : 0;
+    var B = A.bests || {};
+    if (B.day) { var d = B.day.d, k = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); Y.bestDay = { d: d, v: B.day.v, n: Object.keys(dayOrders[k] || {}).length }; }
+    if (B.orders) Y.busiest = B.orders;
+    Y.streak = B.streak || null;
+    var plist = Object.keys(prods).map(function (k) { return prods[k]; }).sort(function (a, b) { return b.v - a.v; });
+    Y.topProduct = plist[0]; Y.topShop = A.shops[0];
+    var E = Y.earned || 1, pct = function (v) { return Math.round(v / E * 100); };
+    // seller type: first match wins
+    var P = null;
+    if (liveE / E >= 0.4) P = ['Live Legend', pct(liveE) + '% of your commission came from Lives. Your buyers turn up when you go live.'];
+    else if (Y.topProduct && Y.topProduct.v / E >= 0.35) P = ['The Specialist', shortName(Y.topProduct.name) + ' made ' + pct(Y.topProduct.v) + '% of your commission. You found your thing.'];
+    else if (nightE / E >= 0.33) P = ['Night Owl Seller', pct(nightE) + '% of your commission came after 9pm. Your buyers love a late-night scroll.'];
+    else if (weekendE / E >= 0.4) P = ['Weekend Warrior', pct(weekendE) + '% of your commission came on Saturdays and Sundays.'];
+    else if (A.evergreen >= 40) P = ['Evergreen Creator', Math.round(A.evergreen) + '% of your commission came from videos over a month old. Your content keeps working.'];
+    else if (Y.shops >= 30) P = ['Shop Hopper', 'You earned commission from ' + Y.shops + ' different shops this year.'];
+    else P = ['Steady Seller', 'You made a sale on ' + Y.saleDays + ' days this year. Consistency pays.'];
+    Y.persona = P;
+    var now = new Date(), monthsSoFar = yr === now.getFullYear() ? now.getMonth() + 1 : 12;
+    Y.gap = Y.firstMonth.getMonth() > 0 && covered.length < monthsSoFar;
+    return Y;
+  }
+
+  var YC = { yellow: '#FFE45C', ink: '#1B1340', pink: '#FF6FB5', indigo: '#2A1E8C', cream: '#FFF4B8', white: '#FFFFFF', lilac: '#8C74FF' };
+  var YW = 1080, YH = 1920, YX = 96, YMAXW = 830; // text kept clear of TikTok and Instagram buttons
+  var YFONT = '"Bricolage Grotesque", system-ui, sans-serif';
+  function yFont(ctx, w, s) { ctx.font = w + ' ' + s + 'px ' + YFONT; }
+  function yFit(ctx, text, w, size, maxW, min) { var s = size; yFont(ctx, w, s); while (s > (min || 40) && ctx.measureText(text).width > maxW) { s -= 4; yFont(ctx, w, s); } return s; }
+  function yWrap(ctx, text, maxW) {
+    var words = String(text).split(/\s+/), lines = [], cur = '';
+    words.forEach(function (wd) { var t = cur ? cur + ' ' + wd : wd; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = wd; } else cur = t; });
+    if (cur) lines.push(cur); return lines;
+  }
+  function yLines(ctx, text, x, y, w, size, maxW, lh, maxLines) {
+    yFont(ctx, w, size); var L = yWrap(ctx, text, maxW);
+    if (maxLines && L.length > maxLines) { L = L.slice(0, maxLines); var last = L[maxLines - 1]; while (ctx.measureText(last + '…').width > maxW && last.length) last = last.slice(0, -1); L[maxLines - 1] = last.replace(/\s+$/, '') + '…'; }
+    L.forEach(function (l, i) { ctx.fillText(l, x, y + i * lh); }); return y + L.length * lh;
+  }
+  function yRound(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function yEase(t) { return 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3); }
+  var YTHEME = [
+    [YC.ink, YC.yellow, YC.pink], [YC.yellow, YC.ink, YC.pink], [YC.pink, YC.ink, YC.yellow], [YC.ink, YC.yellow, YC.pink],
+    [YC.yellow, YC.ink, YC.pink], [YC.lilac, YC.ink, YC.yellow], [YC.pink, YC.ink, YC.yellow], [YC.ink, YC.yellow, YC.pink], [YC.yellow, YC.ink, YC.pink]
+  ];
+  function yBase(ctx, i, Y) {
+    var T = YTHEME[i], bg = T[0], fg = T[1], ac = T[2];
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, YW, YH);
+    var g = ctx.createRadialGradient(900, 260, 40, 900, 260, 900); g.addColorStop(0, 'rgba(255,255,255,' + (bg === YC.ink ? 0.10 : 0.45) + ')'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, YW, YH);
+    var g2 = ctx.createRadialGradient(120, 1750, 20, 120, 1750, 700); g2.addColorStop(0, ac === YC.pink ? 'rgba(255,111,181,.35)' : 'rgba(255,228,92,.35)'); g2.addColorStop(1, 'rgba(255,111,181,0)');
+    ctx.fillStyle = g2; ctx.fillRect(0, 0, YW, YH);
+    // confetti, kept to the edges
+    var dots = [[70, 180, 14], [1010, 150, 10], [960, 520, 18], [40, 1020, 12], [1030, 1180, 16], [880, 1660, 12], [180, 1600, 10], [1000, 1840, 14], [520, 120, 8]];
+    dots.forEach(function (d, k) { ctx.fillStyle = k % 2 ? ac : (bg === YC.ink ? 'rgba(255,255,255,.5)' : YC.ink); ctx.beginPath(); ctx.arc(d[0], d[1], d[2], 0, Math.PI * 2); ctx.fill(); });
+    // big faint year, decoration only
+    ctx.fillStyle = fg; ctx.globalAlpha = bg === YC.ink ? 0.08 : 0.07; yFit(ctx, String(Y.yr), 800, 470, 1000, 100); ctx.fillText(String(Y.yr), 40, 1880); ctx.globalAlpha = 1;
+    // header pill
+    yFont(ctx, 800, 44); var label = 'Commish ' + Y.yr, pw = ctx.measureText(label).width + 104;
+    ctx.fillStyle = fg; yRound(ctx, YX, 290, pw, 84, 42); ctx.fill();
+    ctx.fillStyle = ac; ctx.beginPath(); ctx.arc(YX + 46, 332, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = bg === YC.ink ? YC.ink : fg; yFont(ctx, 800, 28); ctx.textAlign = 'center'; ctx.fillText('£', YX + 46, 342); ctx.textAlign = 'left';
+    ctx.fillStyle = bg; yFont(ctx, 800, 44); ctx.fillText(label, YX + 80, 348);
+    // footer
+    ctx.fillStyle = fg; yFont(ctx, 800, 44); ctx.fillText('commish.fyi', YX, 1500);
+    yFont(ctx, 600, 34); ctx.globalAlpha = 0.8; ctx.fillText('Your Year in Sales', YX, 1548 - 4); ctx.globalAlpha = 1;
+    return T;
+  }
+  function yBars(ctx, Y, x, y, w, h, fg, hi, t, labels) {
+    var top = Math.max.apply(null, Y.months.map(function (m) { return m.v; })) || 1, gap = 14, bw = (w - gap * 11) / 12;
+    Y.months.forEach(function (m, k) {
+      var bh = Math.max(m.v > 0 ? 8 : 4, m.v / top * h * yEase(t * 1.4 - k * 0.04));
+      ctx.fillStyle = m === Y.bestMonth ? hi : fg; ctx.globalAlpha = m.n || m === Y.bestMonth ? 1 : 0.25;
+      yRound(ctx, x + k * (bw + gap), y + h - bh, bw, bh, Math.min(10, bw / 2)); ctx.fill(); ctx.globalAlpha = 1;
+      if (labels) { ctx.fillStyle = fg; yFont(ctx, 700, 26); ctx.textAlign = 'center'; ctx.fillText(MONTHS[k][0], x + k * (bw + gap) + bw / 2, y + h + 40); ctx.textAlign = 'left'; }
+    });
+  }
+  var YCARDS = 9;
+  function yDraw(ctx, i, Y, hide, t) {
+    t = t == null ? 1 : t; var e = yEase(t);
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    var T = yBase(ctx, i, Y), bg = T[0], fg = T[1], ac = T[2], money = function (v) { return gbp(v * e); }, count = function (v) { return num(v * e); };
+    var label = function (s, y) { ctx.fillStyle = fg; yFont(ctx, 700, 62); return yLines(ctx, s, YX, y, 700, 62, YMAXW, 76); };
+    var big = function (s, y, size, col) { ctx.fillStyle = col || fg; var sz = yFit(ctx, s, 800, size || 230, YMAXW, 80); ctx.fillText(s, YX - 6, y); return sz; };
+    var sub = function (s, y, maxLines) { ctx.fillStyle = fg; ctx.globalAlpha = 0.9; var yy = yLines(ctx, s, YX, y, 600, 50, YMAXW, 64, maxLines); ctx.globalAlpha = 1; return yy; };
+    var OY = i === 8 || i === 0 || i === 7 ? (i === 7 ? 60 : 0) : 130; ctx.save(); ctx.translate(0, OY);
+    var hl = function (s, y) { yFont(ctx, 800, 50); var w = ctx.measureText(s).width + 56; ctx.fillStyle = ac; yRound(ctx, YX, y - 52, w, 76, 38); ctx.fill(); ctx.fillStyle = bg === YC.ink ? YC.ink : YC.ink; ctx.fillText(s, YX + 28, y); };
+    if (i === 0) {
+      ctx.fillStyle = fg; yFont(ctx, 800, 200); ctx.fillText('Your', YX - 8, 700); ctx.fillText('year in', YX - 8, 890);
+      ctx.fillStyle = ac; ctx.fillText('sales', YX - 8, 1080);
+      sub('Every order, every shop, every pound. Here\'s how your ' + Y.yr + ' went.', 1200, 3);
+    } else if (i === 1) {
+      if (!hide) { label('This year you earned', 600); big(money(Y.earned), 840); sub('in commission, from ' + num(Y.orders) + ' orders and ' + num(Y.items) + ' items sold.', 960, 3); }
+      else { label('This year you sold', 600); big(count(Y.items), 840); sub('items across ' + num(Y.orders) + ' orders, for ' + num(Y.shops) + ' different shops.', 960, 3); }
+      var span = Math.max(1, Math.round((Y.A.max - Y.A.min) / DAY) + 1);
+      hl(hide ? 'About ' + num(Y.orders / span) + ' orders a day' : 'About ' + gbp(Y.earned / span) + ' a day', 1250);
+    } else if (i === 2) {
+      label('Your best month was', 600); big(MONTHS[Y.bestMonth.d.getMonth()], 830, 200);
+      sub(hide ? Math.round(Y.bestMonthShare) + '% of your whole year\'s commission, in one month.' : money(Y.bestMonth.v) + ' in commission. That\'s ' + Math.round(Y.bestMonthShare) + '% of your year.', 920, 2);
+      yBars(ctx, Y, YX, 1050, YMAXW, 200, fg, bg === YC.pink ? YC.yellow : ac, t, true);
+    } else if (i === 3 && Y.bestDay) {
+      var wd = Y.bestDay.d.toLocaleDateString('en-GB', { weekday: 'long' }), dm = Y.bestDay.d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+      label('Your biggest day was', 600); big(wd, 800, 190, ac); big(dm, 990, 150);
+      sub(hide ? num(Y.bestDay.n) + ' paid and pending orders in a single day.' : money(Y.bestDay.v) + ' in commission from ' + num(Y.bestDay.n) + ' orders, in a single day.', 1110, 3);
+    } else if (i === 4 && Y.topProduct) {
+      label('Your top seller', 600);
+      ctx.fillStyle = fg; var ny = yLines(ctx, shortName(Y.topProduct.name), YX - 4, 740, 800, 104, YMAXW, 112, 4);
+      sub(hide ? num(Y.topProduct.items) + ' sold this year.' : money(Y.topProduct.v) + ' in commission from ' + num(Y.topProduct.items) + ' sold.', ny + 40, 2);
+    } else if (i === 5 && Y.topShop) {
+      label('Your number one shop', 600);
+      ctx.fillStyle = fg; var sy = yLines(ctx, Y.topShop.name, YX - 4, 740, 800, 110, YMAXW, 118, 3);
+      sub(hide ? num(Y.topShop.n) + ' orders through this shop.' : money(Y.topShop.earned) + ' in commission from ' + num(Y.topShop.n) + ' orders.', sy + 40, 2);
+      hl('You sold for ' + num(Y.shops) + ' shops', Math.max(sy + 220, 1250));
+    } else if (i === 6) {
+      if (Y.streak) { label('Your longest streak', 600); big(count(Y.streak.n), 880, 300); ctx.fillStyle = fg; yFont(ctx, 800, 90); ctx.fillText('days in a row', YX, 1000);
+        sub('With a sale every single day, from ' + fmtDs(Y.streak.from) + ' to ' + fmtDs(Y.streak.to) + '.', 1100, 2); }
+      else { label('You made a sale on', 600); big(count(Y.saleDays), 880, 300); ctx.fillStyle = fg; yFont(ctx, 800, 90); ctx.fillText('different days', YX, 1000); }
+    } else if (i === 7) {
+      label('Your seller type', 600);
+      ctx.fillStyle = ac; var py = yLines(ctx, Y.persona[0], YX - 6, 790, 800, 170, YMAXW, 165, 2);
+      sub(Y.persona[1], py + 10, 4);
+    } else if (i === 8) {
+      // receipt
+      var rx = YX, ry = 430, rw = YMAXW, rh = 1000;
+      ctx.fillStyle = YC.white; yRound(ctx, rx, ry, rw, rh, 36); ctx.fill();
+      ctx.strokeStyle = YC.ink; ctx.lineWidth = 6; ctx.stroke();
+      ctx.fillStyle = YC.ink; yFont(ctx, 800, 64); ctx.fillText('Your ' + Y.yr + ' in sales', rx + 50, ry + 100);
+      var rowsR = [];
+      if (!hide) rowsR.push(['Commission', gbp(Y.earned)]);
+      rowsR.push(['Orders', num(Y.orders)], ['Items sold', num(Y.items)], ['Best month', MONTHS[Y.bestMonth.d.getMonth()]]);
+      if (Y.topShop) rowsR.push(['Top shop', Y.topShop.name]);
+      if (Y.topProduct) rowsR.push(['Top seller', shortName(Y.topProduct.name)]);
+      rowsR.push([Y.streak ? 'Longest streak' : 'Days with a sale', Y.streak ? Y.streak.n + ' days' : num(Y.saleDays)], ['Seller type', Y.persona[0]]);
+      var yy = ry + 170;
+      ctx.setLineDash([10, 12]); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(rx + 50, yy - 40); ctx.lineTo(rx + rw - 50, yy - 40); ctx.stroke(); ctx.setLineDash([]);
+      rowsR.forEach(function (r, k) {
+        var rowY = yy + k * 74 + 20; if (k * 0.08 > t * 1.2) return;
+        ctx.fillStyle = YC.ink; yFont(ctx, 600, 38); ctx.fillText(r[0], rx + 50, rowY);
+        ctx.textAlign = 'right'; var vs = yFit(ctx, r[1], 800, 40, rw - 420, 32); var v = r[1]; while (ctx.measureText(v).width > rw - 420 && v.length > 3) v = v.slice(0, -2).replace(/…$/, '') + '…';
+        ctx.fillText(v, rx + rw - 50, rowY); ctx.textAlign = 'left';
+      });
+      var by = yy + rowsR.length * 74 + 30;
+      ctx.setLineDash([10, 12]); ctx.beginPath(); ctx.moveTo(rx + 50, by - 30); ctx.lineTo(rx + rw - 50, by - 30); ctx.stroke(); ctx.setLineDash([]);
+      yBars(ctx, Y, rx + 50, by, rw - 100, Math.max(80, ry + rh - by - 80), YC.indigo, YC.pink, t, true);
+    }
+    ctx.restore();
+  }
+  function yAvailable(Y) {
+    var L = [0, 1, 2]; if (Y.bestDay) L.push(3); if (Y.topProduct) L.push(4); if (Y.topShop) L.push(5); L.push(6, 7, 8); return L;
+  }
+
+  var ST = null;
+  function openStory() {
+    var Y = yearData(); if (!Y) { toast('Add your exports first, then tap See my year.'); location.hash = '#upload'; return; }
+    try { document.fonts && document.fonts.load('800 100px "Bricolage Grotesque"', '£0'); } catch (e) {}
+    ST = { Y: Y, list: yAvailable(Y), i: 0, hide: false, back: document.activeElement, raf: 0 };
+    var host = document.createElement('div'); host.id = 'story'; host.setAttribute('role', 'dialog'); host.setAttribute('aria-modal', 'true'); host.setAttribute('aria-label', 'Commish ' + Y.yr + ': Your Year in Sales');
+    host.innerHTML = '<div class="st-top"><div class="st-prog">' + ST.list.map(function () { return '<i><b></b></i>'; }).join('') + '</div>' +
+      '<div class="st-bar"><button class="st-chip" data-st="hide" aria-pressed="false">Hide £</button><button class="st-x" data-st="close" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>' +
+      '<div class="st-stage"><canvas width="' + YW + '" height="' + YH + '" role="img"></canvas><button class="st-prev" data-st="prev" aria-label="Previous card"></button><button class="st-next" data-st="next" aria-label="Next card"></button></div>' +
+      '<div class="st-foot"></div>';
+    document.body.appendChild(host); document.documentElement.classList.add('story-open');
+    host.addEventListener('click', storyClick);
+    document.addEventListener('keydown', storyKey);
+    window.addEventListener('resize', storySize);
+    storySize(); storyShow(0);
+    var x = host.querySelector('.st-x'); if (x) x.focus();
+  }
+  function closeStory() {
+    if (!ST) return; cancelAnimationFrame(ST.raf);
+    var h = $('#story'); if (h) h.remove(); document.documentElement.classList.remove('story-open');
+    document.removeEventListener('keydown', storyKey); window.removeEventListener('resize', storySize);
+    var b = ST.back; ST = null; if (b && b.focus) try { b.focus(); } catch (e) {}
+  }
+  function storySize() {
+    var st = $('#story .st-stage'), c = $('#story canvas'); if (!st || !c) return;
+    var w = st.clientWidth, h = st.clientHeight, cw = Math.min(w, h * 9 / 16); c.style.width = Math.floor(cw) + 'px'; c.style.height = Math.floor(cw * 16 / 9) + 'px';
+  }
+  var YALT = ['The start of your year in sales', 'Your total for the year', 'Your best month', 'Your biggest day', 'Your top seller', 'Your number one shop', 'Your selling streak', 'Your seller type', 'Your year on one receipt'];
+  function storyShow(k) {
+    if (!ST) return; ST.i = Math.max(0, Math.min(ST.list.length - 1, k));
+    var card = ST.list[ST.i], c = $('#story canvas'), ctx = c.getContext('2d');
+    c.setAttribute('aria-label', YALT[card]);
+    $('#story').querySelectorAll('.st-prog i').forEach(function (x, j) { x.className = j < ST.i ? 'done' : j === ST.i ? 'on' : ''; });
+    var last = ST.i === ST.list.length - 1, pro = S.plan === 'pro';
+    var foot = '<button class="btn st-share" data-st="share">' + (last ? 'Share my receipt' : 'Share this card') + '</button>';
+    if (last) foot += pro ? '<button class="btn ghost" data-st="close">Back to my dashboard</button>' : '<button class="btn pinky" data-st="pro">Want this every month? Go Pro, £2.99</button>';
+    if (ST.i === 0 && ST.Y.gap) foot = '<p class="st-note">Your exports start in ' + MONTHS[ST.Y.firstMonth.getMonth()] + '. <button class="linkish" data-st="add">Add older exports</button> to fill in your whole year.</p>' + foot;
+    if (ST.i === 0) foot += '<p class="st-hint">Tap the right side to go forward</p>';
+    $('#story .st-foot').innerHTML = foot;
+    storySize();
+    cancelAnimationFrame(ST.raf);
+    var t0 = performance.now(), dur = reduceMotion ? 0 : 900;
+    var step = function (now) {
+      if (!ST) return; var t = dur ? (now - t0) / dur : 1;
+      ctx.clearRect(0, 0, YW, YH); yDraw(ctx, card, ST.Y, ST.hide, Math.min(1, t));
+      if (t < 1) ST.raf = requestAnimationFrame(step);
+    };
+    var go = function () { ST.raf = requestAnimationFrame(step); };
+    if (document.fonts && document.fonts.load) document.fonts.load('800 100px "Bricolage Grotesque"', '£0').then(go, go); else go();
+  }
+  function storyClick(e) {
+    var b = e.target.closest('[data-st]'); if (!b || !ST) return;
+    var a = b.dataset.st;
+    if (a === 'close') closeStory();
+    else if (a === 'next') { if (ST.i < ST.list.length - 1) storyShow(ST.i + 1); }
+    else if (a === 'prev') storyShow(ST.i - 1);
+    else if (a === 'hide') { ST.hide = !ST.hide; b.setAttribute('aria-pressed', ST.hide); b.textContent = ST.hide ? 'Show £' : 'Hide £'; storyShow(ST.i); }
+    else if (a === 'share') storyShare(b);
+    else if (a === 'pro') { closeStory(); var u = document.createElement('button'); u.dataset.action = 'unlock'; u.hidden = true; document.body.appendChild(u); u.click(); u.remove(); }
+    else if (a === 'add') { closeStory(); location.hash = '#upload'; }
+  }
+  function storyKey(e) {
+    if (!ST) return;
+    if (e.key === 'Escape') closeStory();
+    else if (e.key === 'ArrowRight') { if (ST.i < ST.list.length - 1) storyShow(ST.i + 1); }
+    else if (e.key === 'ArrowLeft') storyShow(ST.i - 1);
+  }
+  function storyShare(btn) {
+    var card = ST.list[ST.i], c = document.createElement('canvas'); c.width = YW; c.height = YH;
+    yDraw(c.getContext('2d'), card, ST.Y, ST.hide, 1);
+    var name = 'commish-' + ST.Y.yr + '-' + (card === 8 ? 'receipt' : 'card-' + (ST.i + 1)) + '.png';
+    c.toBlob(function (blob) {
+      if (!blob) { toast('Sorry, that image could not be made.'); return; }
+      var file = null; try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Commish ' + ST.Y.yr }).catch(function () {});
+      } else {
+        var url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000); toast('Saved ' + name + '. Post it to your Story!');
+      }
+    }, 'image/png');
+  }
+  function yearCard(where) {
+    var Y = yearData(); if (!Y) return '';
+    var partial = Y.gap ? '<p style="margin:0;font-size:14px;opacity:.9">Covers ' + MONTHS[Y.firstMonth.getMonth()] + ' to ' + MONTHS[Y.lastMonth.getMonth()] + '. <a href="#upload" style="color:inherit;font-weight:800">Add older exports</a> for your whole year.</p>' : '';
+    return '<div class="card dark yearcard t a-in"><div><p class="yc-kick">New · Free</p><h2>Commish ' + Y.yr + ': Your Year in Sales</h2>' +
+      '<p style="margin:6px 0 0;font-size:15px;line-height:1.4">Your best month, top seller, biggest day and seller type, as a story you can share.</p></div>' + partial +
+      '<button class="btn pinky" data-action="yearstory">See my year</button></div>';
+  }
+
   // ---------- render & routing ----------
   var ROUTES = ['upload', 'reveal', 'home', 'shops', 'videos', 'tax', 'pro', 'admin'];
   function route() {
@@ -936,12 +1209,12 @@
       if (S.plan === 'pro' && A.empty) {
         var em = emptyCard().replace('%RANGE%', range(A.all.min, A.all.max));
         parts = { home: filterBar(A) + em, shops: fChip(A) + em, videos: fChip(A) + em, tax: viewTax(A.all) };
-      } else if (S.plan === 'pro') parts = { home: filterBar(A) + viewHome(A), shops: fChip(A) + viewShops(A), videos: fChip(A) + viewVideos(A), tax: viewTax(A.all) };
-      else parts = { home: filterBar(A) + viewHome(A), pro: viewPro(A) };
+      } else if (S.plan === 'pro') parts = { home: yearCard() + filterBar(A) + viewHome(A), shops: fChip(A) + viewShops(A), videos: fChip(A) + viewVideos(A), tax: viewTax(A.all) };
+      else parts = { home: yearCard() + filterBar(A) + viewHome(A), pro: viewPro(A) };
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 10:38</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 10:58</p>';
     navs(r === 'reveal' ? 'home' : r);
     var fc = document.querySelector('.fchip[aria-pressed="true"]'); if (fc) fc.parentNode.scrollLeft = Math.max(0, fc.offsetLeft - fc.parentNode.offsetLeft - 8);
     bindDrop();
@@ -1022,7 +1295,7 @@
     S.files = S.files.filter(function (f) { return !f.demo; });
     Promise.all(arr.map(function (f) { return readFile(f).catch(function (e) { return { name: f.name, error: e.message, rows: [] }; }); })).then(function (res) {
       res.forEach(function (f) { S.files.push(f); });
-      if (goodFiles().length) { location.hash = '#home'; render(); } else render();
+      if (goodFiles().length) { location.hash = '#home'; render(); if (S.wantYear) { S.wantYear = false; setTimeout(openStory, 400); } } else render();
     });
   }
   function bindDrop() {
@@ -1274,6 +1547,7 @@
       else { F = { p: 'all', from: '', to: '', days: [1, 1, 1, 1, 1, 1, 1] }; }
       S.sel = null; S.year = null; S.wsel = null; saveF(); render(true);
     }
+    else if (a === 'yearstory') openStory();
     else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(true); }
     else if (a === 'unlock' && !S.user && !(S.ready && S.ready.signin)) toast('Pro is coming very soon. Watch this space!');
     else if (a === 'unlock') openSheet(S.user ? (S.plan === 'pro' ? 'account' : 'upgrade') : 'signin', S.user ? null : 'unlock');
@@ -1314,7 +1588,13 @@
     try { localStorage.setItem('commish-theme', dark ? 'dark' : 'light'); } catch (e) {}
   });
   $('#themeBtn').setAttribute('aria-pressed', document.documentElement.dataset.theme === 'dark');
+  function yearHash() {
+    if (location.hash !== '#year') return false;
+    if (goodFiles().length) { history.replaceState(null, '', '#home'); if (!dashShown) render(); openStory(); return true; }
+    S.wantYear = true; return false;
+  }
   window.addEventListener('hashchange', function () {
+    if (yearHash()) return;
     if (document.activeElement && document.activeElement.closest && document.activeElement.closest('nav')) document.activeElement.blur();
     var r = route();
     if (r !== 'upload' && dashShown && SECTIONS.indexOf(r) >= 0) { goSection(r, true); return; }
@@ -1325,5 +1605,6 @@
   try { localStorage.removeItem('commish-plan'); } catch (e) {}
   render();
   boot();
+  yearHash();
   (function () { var r = route(); if (SECTIONS.indexOf(r) > 0) setTimeout(function () { goSection(r, false); }, 30); })();
 })();
