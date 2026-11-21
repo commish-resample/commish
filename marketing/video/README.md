@@ -6,6 +6,7 @@ Scripts that make Commish TikTok clips in the Commish design system style (1080 
 - promo.py: the 30s promo. Imports render.py; device mockups (phone, laptop), captions, beat-synced scenes, renders scenes in parallel then joins them.
 - personal_bests.py: the 26s personal bests clip, built on promo.py.
 - lost_commission.py: the 26s lost commission clip (shops most lost, Worth checking, copy order IDs).
+- year_in_sales.py: the 26s launch clip for Commish 2026: Your Year in Sales. Uses phone screenshots of the story (demo data, reduced motion, focus blurred) and the saved card PNGs. All text left-aligned between x 80 and 860.
 - music.py: synthesised deep-house groove (set BARS: 2s per bar at 120 BPM). Normalise with ffmpeg loudnorm I=-14.
 - share.py: the 1200 x 630 share image.
 
@@ -18,4 +19,5 @@ Scripts that make Commish TikTok clips in the Commish design system style (1080 
 ## Rules
 - Demo data only; never real names, handles, emails or contacts.
 - TikTok safe zones: no text in the top 270px, bottom 380px, or right 140px from 700px down. Captions start at y = 300.
+- Jamie prefers text kept to the left (x 80 to 860) so the profile picture and icons on the right never touch it.
 - Cuts land on the beat (every 2 s or 0.5 s). One encoded file per scene, joined with the concat demuxer, music added with -c:v copy.
