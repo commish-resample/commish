@@ -149,7 +149,7 @@
         var s = shops[sIdx], p = s[3][c.shop === sIdx ? c.prod : Math.floor(rnd() * 2)];
         var hr = pick([9, 11, 12, 13, 15, 17, 18, 19, 19, 20, 20, 20, 21, 21, 22, 23]);
         var od = new Date(+start + day * DAY); od.setHours(hr, Math.floor(rnd() * 60), Math.floor(rnd() * 60), 0);
-        if (c.live && rnd() < 0.7) od = new Date(+c.t + rnd() * 7200e3);
+        if (c.live) od = new Date(+c.t + Math.pow(rnd(), 1.4) * (4800e3 + (c.t.getDate() % 5) * 600e3));
         if (od < c.t) od = new Date(+c.t + 3600e3 * (1 + rnd() * 20));
         if (od > now) continue;
         var items = rnd() < 0.03 ? 2 : 1;
@@ -909,14 +909,18 @@
     Y.shops = A.shops.filter(function (s) { return s.earned > 0; }).length;
     // months
     Y.months = []; for (var i = 0; i < 12; i++) Y.months.push({ v: 0, n: 0, d: new Date(yr, i, 1) });
-    var dayKeys = {}, dayOrders = {}, prods = {}, liveE = 0, nightE = 0, weekendE = 0;
+    var dayKeys = {}, dayOrders = {}, prods = {}, liveE = 0, nightE = 0, weekendE = 0, LV = {}, liveO = {}, vidE = 0, vidO = {};
     ok.forEach(function (r) {
       var e = A.earned(r), m = Y.months[r.odate.getMonth()]; m.v += e; m.n++;
       var dk0 = r.odate.getFullYear() + '-' + r.odate.getMonth() + '-' + r.odate.getDate(); dayKeys[dk0] = 1;
       (dayOrders[dk0] = dayOrders[dk0] || {})[r.oid] = 1;
       var p = prods[r.product] || (prods[r.product] = { name: r.product, v: 0, items: 0, shop: r.shop, vids: {}, lives: {} }); p.v += e; p.items += r.items || 0;
       if (r.cid) (/live/i.test(r.ctype) ? p.lives : p.vids)[r.cid] = 1;
-      if (/live/i.test(r.ctype)) liveE += e;
+      if (/live/i.test(r.ctype)) { liveE += e; liveO[r.oid] = 1;
+        var lv = LV[r.cid] || (LV[r.cid] = { cid: r.cid, e: 0, gmv: 0, items: 0, o: {}, first: r.odate, last: r.odate });
+        lv.e += e; lv.gmv += r.gmv || 0; lv.items += r.items || 0; if (!lv.o[r.oid] || r.odate < lv.o[r.oid]) lv.o[r.oid] = r.odate;
+        if (r.odate < lv.first) lv.first = r.odate; if (r.odate > lv.last) lv.last = r.odate; }
+      else { vidE += e; vidO[r.oid] = 1; }
       var h = r.odate.getHours(); if (h >= 21 || h < 3) nightE += e;
       var wd = r.odate.getDay(); if (wd === 0 || wd === 6) weekendE += e;
     });
@@ -943,6 +947,17 @@
     else if (Y.shops >= 30) P = ['Shop Hopper', 'You earned commission from ' + Y.shops + ' different shops this year.'];
     else P = ['Steady Seller', 'You made a sale on ' + Y.saleDays + ' days this year. Consistency pays.'];
     Y.persona = P;
+    // Lives: each Live counted separately, ranked by sales
+    var lives = Object.keys(LV).map(function (kk) { var x = LV[kk], ts = Object.keys(x.o).map(function (o) { return +x.o[o]; }).sort(function (a, b) { return a - b; });
+      var peak = 0, j0 = 0; ts.forEach(function (tt, j) { while (tt - ts[j0] > 600e3) j0++; peak = Math.max(peak, j - j0 + 1); });
+      return { e: x.e, gmv: x.gmv, items: x.items, n: ts.length, first: x.first, mins: Math.round((x.last - x.first) / 60000), peak: peak }; })
+      .filter(function (x) { return x.n > 0; }).sort(function (a, b) { return b.gmv - a.gmv || b.e - a.e; });
+    if (lives.length) {
+      var nLO = Object.keys(liveO).length, nVO = Object.keys(vidO).length;
+      Y.lives = { count: lives.length, e: liveE, share: Math.round(liveE / E * 100), orders: nLO, top: lives[0],
+        peak: lives.reduce(function (m, x) { return x.peak > m.peak ? x : m; }, lives[0]),
+        perLive: nLO ? liveE / nLO : 0, perVid: nVO ? vidE / nVO : 0 };
+    }
     var now = new Date(), monthsSoFar = yr === now.getFullYear() ? now.getMonth() + 1 : 12;
     Y.gap = Y.firstMonth.getMonth() > 0 && covered.length < monthsSoFar;
     return Y;
@@ -967,7 +982,7 @@
   function yEase(t) { return 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3); }
   var YTHEME = [
     [YC.ink, YC.yellow, YC.pink], [YC.yellow, YC.ink, YC.pink], [YC.pink, YC.ink, YC.yellow], [YC.ink, YC.yellow, YC.pink],
-    [YC.yellow, YC.ink, YC.pink], [YC.lilac, YC.ink, YC.yellow], [YC.pink, YC.ink, YC.yellow], [YC.ink, YC.yellow, YC.pink], [YC.yellow, YC.ink, YC.pink], [YC.ink, YC.yellow, YC.pink]
+    [YC.yellow, YC.ink, YC.pink], [YC.lilac, YC.ink, YC.yellow], [YC.pink, YC.ink, YC.yellow], [YC.ink, YC.yellow, YC.pink], [YC.yellow, YC.ink, YC.pink], [YC.ink, YC.yellow, YC.pink], [YC.pink, YC.ink, YC.yellow]
   ];
   function yBase(ctx, i, Y) {
     var T = YTHEME[i], bg = T[0], fg = T[1], ac = T[2];
@@ -1010,7 +1025,7 @@
     var label = function (s, y) { ctx.fillStyle = fg; yFont(ctx, 700, 62); return yLines(ctx, s, YX, y, 700, 62, YMAXW, 76); };
     var big = function (s, y, size, col) { ctx.fillStyle = col || fg; var sz = yFit(ctx, s, 800, size || 230, YMAXW, 80); ctx.fillText(s, YX - 6, y); return sz; };
     var sub = function (s, y, maxLines) { ctx.fillStyle = fg; ctx.globalAlpha = 0.9; var yy = yLines(ctx, s, YX, y, 600, 50, YMAXW, 64, maxLines); ctx.globalAlpha = 1; return yy; };
-    var OY = i === 8 || i === 9 || i === 0 || i === 7 ? (i === 7 ? 60 : 0) : 130; ctx.save(); ctx.translate(0, OY);
+    var OY = i === 8 || i === 9 || i === 10 || i === 0 || i === 7 ? (i === 7 ? 60 : 0) : 130; ctx.save(); ctx.translate(0, OY);
     var hl = function (s, y) { yFont(ctx, 800, 50); var w = ctx.measureText(s).width + 56; ctx.fillStyle = ac; yRound(ctx, YX, y - 52, w, 76, 38); ctx.fill(); ctx.fillStyle = bg === YC.ink ? YC.ink : YC.ink; ctx.fillText(s, YX + 28, y); };
     if (i === 0) {
       ctx.fillStyle = fg; yFont(ctx, 800, 200); ctx.fillText('Your', YX - 8, 700); ctx.fillText('year in', YX - 8, 890);
@@ -1070,6 +1085,26 @@
         ctx.fillStyle = YC.white; ctx.globalAlpha = a * 0.85; yFont(ctx, 600, 32); ctx.fillText(cutT(rest, tw2 - lw - 16), tx + lw + 16, sy0 - 1);
         ctx.restore();
       });
+    } else if (i === 10) {
+      var LV2 = Y.lives, tp = LV2.top;
+      ctx.fillStyle = fg; yFont(ctx, 700, 62); ctx.fillText('You went Live', YX, 530);
+      yFont(ctx, 800, 150); var cnt = num(LV2.count * e) + (LV2.count === 1 ? ' time' : ' times'); yFit(ctx, cnt, 800, 160, YMAXW, 70); ctx.fillText(cnt, YX - 6, 690);
+      sub(hide ? num(LV2.orders) + ' orders came from your Lives.' : 'and made ' + money(LV2.e) + ' in commission. That\'s ' + LV2.share + '% of your year.', 770, 2);
+      // busiest Live box
+      var bx = YX, by = 890, bw = YMAXW, bh = 320;
+      ctx.fillStyle = YC.ink; yRound(ctx, bx, by, bw, bh, 48); ctx.fill();
+      ctx.fillStyle = YC.yellow; yFont(ctx, 700, 40); ctx.fillText('Your busiest Live', bx + 44, by + 68);
+      var when = tp.first.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + tp.first.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '').toLowerCase();
+      ctx.fillStyle = YC.pink; yFit(ctx, when, 800, 76, bw - 88, 44); ctx.fillText(when, bx + 40, by + 148);
+      var stats = hide ? [[num(tp.n), 'orders'], [num(tp.items), 'items']] : [[num(tp.n), 'orders'], [gbp(tp.gmv * e), 'in sales'], [gbp(tp.e * e), 'commission']];
+      var sw = (bw - 88) / stats.length;
+      stats.forEach(function (st, j) {
+        var x0 = bx + 44 + j * sw; ctx.fillStyle = YC.white; yFit(ctx, st[0], 800, 64, sw - 16, 34); ctx.fillText(st[0], x0, by + 236);
+        yFont(ctx, 600, 32); ctx.globalAlpha = 0.85; ctx.fillText(st[1], x0, by + 280); ctx.globalAlpha = 1;
+      });
+      var ny = by + bh + 82;
+      if (LV2.peak && LV2.peak.peak >= 3) { hl(num(LV2.peak.peak) + ' orders in 10 minutes', ny); ny += 100; }
+      if (!hide && LV2.perVid > 0 && LV2.perLive > LV2.perVid * 1.1) { ctx.fillStyle = fg; ctx.globalAlpha = 0.9; yLines(ctx, 'Live orders: ' + gbp2(LV2.perLive) + ' each. Videos: ' + gbp2(LV2.perVid) + '.', YX, ny, 600, 44, YMAXW, 56, 1); ctx.globalAlpha = 1; }
     } else if (i === 8) {
       // summary: bubbles and tiles, made to be screenshotted
       var pop = function (k, cx, cy, draw) {
@@ -1134,7 +1169,7 @@
     ctx.restore();
   }
   function yAvailable(Y) {
-    var L = [0, 1, 2]; if (Y.bestDay) L.push(3); if (Y.topProduct) L.push(4); if (Y.top5 && Y.top5.length >= 3) L.push(9); if (Y.topShop) L.push(5); L.push(6, 7, 8); return L;
+    var L = [0, 1, 2]; if (Y.bestDay) L.push(3); if (Y.topProduct) L.push(4); if (Y.top5 && Y.top5.length >= 3) L.push(9); if (Y.lives) L.push(10); if (Y.topShop) L.push(5); L.push(6, 7, 8); return L;
   }
 
   var ST = null;
@@ -1171,7 +1206,7 @@
     var st = $('#story .st-stage'), c = $('#story canvas'); if (!st || !c) return;
     var w = st.clientWidth, h = st.clientHeight, cw = Math.min(w, h * 9 / 16); c.style.width = Math.floor(cw) + 'px'; c.style.height = Math.floor(cw * 16 / 9) + 'px';
   }
-  var YALT = ['The start of your year in sales', 'Your total for the year', 'Your best month', 'Your biggest day', 'Your top seller', 'Your number one shop', 'Your selling streak', 'Your seller type', 'Your year at a glance', 'Your top 5 sellers'];
+  var YALT = ['The start of your year in sales', 'Your total for the year', 'Your best month', 'Your biggest day', 'Your top seller', 'Your number one shop', 'Your selling streak', 'Your seller type', 'Your year at a glance', 'Your top 5 sellers', 'Your Lives'];
   function storyShow(k) {
     if (!ST) return; ST.i = Math.max(0, Math.min(ST.list.length - 1, k));
     var card = ST.list[ST.i], c = $('#story canvas'), ctx = c.getContext('2d');
@@ -1216,7 +1251,7 @@
     else if (e.key === 'ArrowLeft') storyShow(ST.i - 1);
   }
   // Images are made ahead of time so the share sheet opens straight from the tap (iPhones insist on that).
-  var YSLUG = { 0: 'intro', 1: 'total', 2: 'best-month', 3: 'biggest-day', 4: 'top-seller', 9: 'top-5', 5: 'top-shop', 6: 'streak', 7: 'seller-type', 8: 'my-year' };
+  var YSLUG = { 0: 'intro', 1: 'total', 2: 'best-month', 3: 'biggest-day', 4: 'top-seller', 9: 'top-5', 10: 'lives', 5: 'top-shop', 6: 'streak', 7: 'seller-type', 8: 'my-year' };
   function yName(k) { var card = ST.list[k]; return 'commish-' + ST.Y.yr + '-' + String(k + 1).padStart(2, '0') + '-' + (YSLUG[card] || 'card') + '.png'; }
   function yBlob(k) {
     var key = ST.list[k] + (ST.hide ? 'h' : '');
@@ -1317,7 +1352,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 11:42</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 12:18</p>';
     navs(r === 'reveal' ? 'home' : r);
     var fc = document.querySelector('.fchip[aria-pressed="true"]'); if (fc) fc.parentNode.scrollLeft = Math.max(0, fc.offsetLeft - fc.parentNode.offsetLeft - 8);
     bindDrop();
