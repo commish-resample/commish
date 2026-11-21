@@ -426,3 +426,11 @@ html,body{overflow-x:clip}
 .fchips{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:8px;overflow:visible;margin:10px 0 0;padding:0}
 .fchip{width:100%;padding:0 4px;font-size:14px}
 @media (min-width:600px){.fchips{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}.fchip{font-size:15px}}
+.st-foot .btn{font-size:clamp(15px,4.4vw,17px);white-space:nowrap}
+@media (max-height:720px){.st-foot .btn{min-height:44px}.st-foot{gap:6px}.st-hint{display:none}}
+@media (max-height:540px) and (orientation:landscape){
+  #story{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,300px);grid-template-rows:auto minmax(0,1fr);column-gap:18px;row-gap:6px}
+  .st-top{grid-column:1 / 3;max-width:none}.st-prog{max-width:520px;width:100%;margin:0 auto}
+  .st-stage{grid-column:1;grid-row:2}.st-foot{grid-column:2;grid-row:2;align-self:center}
+  .st-row{flex-direction:column}.st-note{text-align:left}
+}

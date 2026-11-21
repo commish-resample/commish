@@ -1059,7 +1059,8 @@
       else { label('You made a sale on', 600); big(count(Y.saleDays), 880, 300); ctx.fillStyle = fg; yFont(ctx, 800, 90); ctx.fillText('different days', YX, 1000); }
     } else if (i === 7) {
       label('Your seller type', 600);
-      ctx.fillStyle = ac; var py = yLines(ctx, Y.persona[0], YX - 6, 790, 800, 170, YMAXW, 165, 2);
+      ctx.fillStyle = ac; var psz = 170; yFont(ctx, 800, psz); while (psz > 90 && Y.persona[0].split(' ').some(function (wd) { return ctx.measureText(wd).width > YMAXW - 20; })) { psz -= 6; yFont(ctx, 800, psz); }
+      var py = yLines(ctx, Y.persona[0], YX - 6, 790, 800, psz, YMAXW - 20, psz * 0.97, 2);
       sub(Y.persona[1], py + 10, 3);
     } else if (i === 9) {
       ctx.fillStyle = fg; yFont(ctx, 800, 76); ctx.fillText('Your top ' + Y.top5.length + ' sellers', YX - 4, 480);
@@ -1214,9 +1215,9 @@
     $('#story').querySelectorAll('.st-prog i').forEach(function (x, j) { x.className = j < ST.i ? 'done' : j === ST.i ? 'on' : ''; });
     var last = ST.i === ST.list.length - 1, pro = S.plan === 'pro';
     var n = ST.list.length;
-    var foot = last ? '<button class="btn st-share" data-st="saveall">Save all ' + n + ' cards for your Story</button><button class="btn ghost" data-st="share">Save just this one</button>'
+    var foot = last ? '<button class="btn st-share" data-st="saveall">Save all ' + n + ' cards</button><button class="btn ghost" data-st="share">Save just this one</button>'
       : '<div class="st-row"><button class="btn st-share" data-st="share">Save this card</button><button class="btn ghost" data-st="saveall">Save all ' + n + '</button></div>';
-    if (last) foot += pro ? '<button class="btn ghost" data-st="close">Back to my dashboard</button>' : '<button class="btn pinky" data-st="pro">Want this every month? Go Pro, £2.99</button>';
+    if (last) foot += pro ? '<button class="btn ghost" data-st="close">Back to my dashboard</button>' : '<button class="btn pinky" data-st="pro">Get this every month with Pro</button>';
     if (ST.i === 0 && ST.Y.gap) foot = '<p class="st-note">Your exports start in ' + MONTHS[ST.Y.firstMonth.getMonth()] + '. <button class="linkish" data-st="add">Add older exports</button> to fill in your whole year.</p>' + foot;
     if (ST.i === 0) foot += '<p class="st-hint">Tap or swipe to go through your year. Save the cards and post them to your Story in order.</p>';
     $('#story .st-foot').innerHTML = foot;
@@ -1346,13 +1347,13 @@
       var parts;
       if (S.plan === 'pro' && A.empty) {
         var em = emptyCard().replace('%RANGE%', range(A.all.min, A.all.max));
-        parts = { home: filterBar(A) + em, shops: fChip(A) + em, videos: fChip(A) + em, tax: viewTax(A.all) };
+        parts = { home: yearCard() + filterBar(A) + em, shops: fChip(A) + em, videos: fChip(A) + em, tax: viewTax(A.all) };
       } else if (S.plan === 'pro') parts = { home: yearCard() + filterBar(A) + viewHome(A), shops: fChip(A) + viewShops(A), videos: fChip(A) + viewVideos(A), tax: viewTax(A.all) };
       else parts = { home: yearCard() + filterBar(A) + viewHome(A), pro: viewPro(A) };
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 12:18</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 13:21</p>';
     navs(r === 'reveal' ? 'home' : r);
     var fc = document.querySelector('.fchip[aria-pressed="true"]'); if (fc) fc.parentNode.scrollLeft = Math.max(0, fc.offsetLeft - fc.parentNode.offsetLeft - 8);
     bindDrop();
