@@ -179,7 +179,7 @@
   }
 
   // ---------- analysis ----------
-  function analyse(rows) {
+  function analyse(rows, now) {
     var A = { rows: rows };
     var sum = function (a, f) { return a.reduce(function (s, r) { return s + f(r); }, 0); };
     var earned = function (r) { return r.status === 'Settled' ? (r.actual != null ? r.actual : r.est) : r.status === 'Pending' ? r.est : 0; };
@@ -197,6 +197,7 @@
     A.effRate = okGmv ? sum(ok, earned) / okGmv * 100 : 0;
     var t = rows.map(function (r) { return +r.odate; });
     A.min = new Date(Math.min.apply(null, t)); A.max = new Date(Math.max.apply(null, t));
+    A.now = now || A.max;
     A.days = Math.max(1, Math.round((A.max - A.min) / DAY) + 1);
     A.perDay = (A.paid + A.owed) / A.days;
     var cids = {}; ok.forEach(function (r) { if (r.cid) cids[r.cid] = 1; }); A.nContent = Object.keys(cids).length;
@@ -209,7 +210,7 @@
       if (r.status === 'Settled') m.paid += earned(r); else if (r.status === 'Pending') { m.owed += r.est; m.qn++; } else m.lost += r.est;
     });
     var mk = function (y, mo) { var d0 = new Date(y, mo, 1), k = y * 12 + mo, x = MM[k] || { paid: 0, owed: 0, lost: 0, n: 0, qn: 0 }; return { d: d0, key: k, paid: x.paid, owed: x.owed, lost: x.lost, n: x.n, qn: x.qn }; };
-    var curKey = A.max.getFullYear() * 12 + A.max.getMonth();
+    var curKey = A.now.getFullYear() * 12 + A.now.getMonth();
     A.years = []; Object.keys(MM).forEach(function (k) { var y = Math.floor(k / 12); if (A.years.indexOf(y) < 0) A.years.push(y); }); A.years.sort();
     A.year = (S.year && A.years.indexOf(S.year) >= 0) ? S.year : A.max.getFullYear();
     A.months = [];
@@ -217,8 +218,8 @@
     A.curIdx = A.year === A.max.getFullYear() ? A.max.getMonth() : 11;
     var allM = Object.keys(MM).map(function (k) { return mk(Math.floor(k / 12), k % 12); });
     A.bestMonth = allM.slice().sort(function (a, b) { return (b.paid + b.owed) - (a.paid + a.owed); })[0];
-    A.curMonth = mk(A.max.getFullYear(), A.max.getMonth());
-    var pm = new Date(A.max.getFullYear(), A.max.getMonth() - 1, 1); A.lastFull = mk(pm.getFullYear(), pm.getMonth());
+    A.curMonth = mk(A.now.getFullYear(), A.now.getMonth());
+    var pm = new Date(A.now.getFullYear(), A.now.getMonth() - 1, 1); A.lastFull = mk(pm.getFullYear(), pm.getMonth());
 
     // weeks
     var wkStart = function (x) { var y = new Date(x.getFullYear(), x.getMonth(), x.getDate()); y.setDate(y.getDate() - (y.getDay() + 6) % 7); return +y; };
@@ -249,7 +250,7 @@
     A.shops.sort(function (a, b) { return b.earned - a.earned; });
     var grp = function (o) { var g = A.shops.filter(function (s) { return s.overseas === o; }); var nn = sum(g, function (s) { return s.n; }), l = sum(g, function (s) { return s.lostN; }); return nn ? l / nn : null; };
     A.ukLost = grp(false); A.osLost = grp(true);
-    var monthStart = new Date(A.max.getFullYear(), A.max.getMonth(), 1);
+    var monthStart = new Date(A.now.getFullYear(), A.now.getMonth(), 1);
     A.newShops = A.shops.filter(function (s) { return s.first >= monthStart; }).map(function (s) { return s.name; });
 
     // lost: returned by customer vs ruled ineligible with nothing returned
@@ -271,15 +272,15 @@
     A.short = S_.filter(function (r) { return r.actual != null && r.actual < r.est - 0.009; });
     var lags = S_.filter(function (r) { return r.sdate; }).map(function (r) { return (r.sdate - r.odate) / DAY; }).sort(function (a, b) { return a - b; });
     A.lagMed = lags.length ? Math.round(lags[Math.floor(lags.length / 2)]) : 18;
-    var cut = new Date(+A.max - 30 * DAY);
+    var cut = new Date(+A.now - 30 * DAY);
     A.stuck = P_.filter(function (r) { return r.odate < cut; }); A.stuckVal = sum(A.stuck, function (r) { return r.est; });
     var payday = [0, 0, 0, 0, 0, 0, 0]; S_.forEach(function (r) { if (r.sdate) payday[r.sdate.getDay()]++; });
     A.payday = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][payday.indexOf(Math.max.apply(null, payday))];
 
     // forecast this month
-    var mNow = A.curMonth, dayOfMonth = A.max.getDate(), dim = new Date(A.max.getFullYear(), A.max.getMonth() + 1, 0).getDate();
+    var mNow = A.curMonth, dayOfMonth = A.now.getDate(), dim = new Date(A.now.getFullYear(), A.now.getMonth() + 1, 0).getDate();
     A.forecast = (mNow.paid + mNow.owed) / dayOfMonth * dim;
-    A.fc = { soFar: mNow.paid + mNow.owed, days: dayOfMonth, dim: dim, perDay: (mNow.paid + mNow.owed) / dayOfMonth, month: MONTHS[A.max.getMonth()] };
+    A.fc = { soFar: mNow.paid + mNow.owed, days: dayOfMonth, dim: dim, perDay: (mNow.paid + mNow.owed) / dayOfMonth, month: MONTHS[A.now.getMonth()] };
 
     // content
     var bands = [['Same day', 0, 1], ['1-7 days', 1, 8], ['8-30 days', 8, 31], ['1-3 months', 31, 91], ['3-12 months', 91, 366], ['1 year+', 366, 1e9]];
@@ -289,7 +290,7 @@
     A.evergreen = tot ? (bandVals[3] + bandVals[4] + bandVals[5]) / tot * 100 : 0;
     var C = new Map();
     ok.forEach(function (r) { if (!r.cid) return; var c = C.get(r.cid); if (!c) { c = { cid: r.cid, type: r.ctype, posted: r.posted, e: 0, n: 0, prods: {} }; C.set(r.cid, c); } c.e += earned(r); c.n++; c.prods[r.product] = (c.prods[r.product] || 0) + 1; });
-    var cut30 = new Date(+A.max - 30 * DAY);
+    var cut30 = new Date(+A.now - 30 * DAY);
     ok.forEach(function (r) { var c = r.cid && C.get(r.cid); if (c && r.odate >= cut30) c.recent = (c.recent || 0) + earned(r); });
     var content = Array.from(C.values());
     content.forEach(function (c) { c.top = Object.keys(c.prods).sort(function (x, y) { return c.prods[y] - c.prods[x]; })[0] || ''; });
@@ -337,7 +338,7 @@
       });
       if (longest && longest.n >= 2) B.streak = longest;
       var lastKey = keys[keys.length - 1];
-      if (lastKey === dk(A.max) && run >= 2) B.current = run;
+      if (lastKey === dk(A.now) && run >= 2) B.current = run;
       // lifetime milestones
       var ms = [100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000], hit = [], cum = 0, mi = 0;
       ok.slice().sort(function (a, b) { return a.odate - b.odate; }).forEach(function (r) {
@@ -375,7 +376,7 @@
     var T = {};
     S_.forEach(function (r) { if (!r.sdate) return; var y = ty(r.sdate); var x = T[y] || (T[y] = { y: y, paid: 0, n: 0, months: {} }); x.paid += earned(r); x.n++; var mk = r.sdate.getMonth(); x.months[mk] = (x.months[mk] || 0) + earned(r); });
     A.taxYears = Object.keys(T).map(function (k) { return T[k]; }).sort(function (a, b) { return b.y - a.y; });
-    A.taxNow = ty(A.max);
+    A.taxNow = ty(A.now);
     return A;
   }
 
@@ -429,7 +430,17 @@
     if (S.plan !== 'pro' || !fActive()) { A0.all = A0; return A0; }
     var R = fRange(A0), rows = A0.rows.filter(function (r) { return inRange(r, R.from, R.to); });
     var prevRows = R.none ? [] : A0.rows.filter(function (r) { return inRange(r, R.pf, R.pt); });
-    var A = rows.length ? analyse(rows) : { empty: true };
+    var A = rows.length ? analyse(rows, A0.max) : { empty: true };
+    if (!A.empty) {
+      var nowD = day0(A0.max), from = R.from > day0(A0.min) ? R.from : day0(A0.min), to = R.to < nowD ? R.to : nowD, nd = 0;
+      for (var d = new Date(from); d <= to; d = addD(d, 1)) if (F.days[(d.getDay() + 6) % 7]) nd++;
+      A.days = Math.max(1, nd); A.perDay = (A.paid + A.owed) / A.days;
+      // A forecast for this month only makes sense when the whole month so far is included.
+      A.fcOk = allDays() && R.from <= new Date(nowD.getFullYear(), nowD.getMonth(), 1) && R.to >= nowD;
+      if (!A.fcOk) A.forecast = 0;
+      var have = {}; A.shops.forEach(function (x) { have[x.name] = 1; });
+      A.newShops = A0.newShops.filter(function (n) { return have[n]; });
+    }
     A.all = A0; A.R = R; A.filtered = true; A.dupes = A0.dupes; A.files = A0.files; A.allFiles = A0.allFiles; A.hiddenRows = 0; A.winStart = null;
     if (prevRows.length && R.pf >= day0(A0.min)) {
       var P = { earned: 0, gmv: 0, items: 0 };
@@ -607,11 +618,11 @@
         '<div class="alert t" id="mDetail" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><span data-t style="font-size:18px;font-weight:800">' + MONTHS[m.d.getMonth()] + ' ' + m.d.getFullYear() + '</span><span style="text-align:right"><span data-l1>' + gbp(m.paid) + ' paid</span><br><span data-l2>' + gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost</span></span></div>';
       var tr = yearTrend(A);
       if (tr) { var per = Math.round(Math.abs(tr.slope)); out += '<p class="sub" style="margin-top:12px"><b>Trend since ' + MONTHS[A.months[tr.i0].d.getMonth()] + ':</b> ' + (per < 10 ? 'roughly flat, about the same each month.' : (tr.slope > 0 ? 'up' : 'down') + ' about ' + gbp(per) + ' a month, paid and pending.') + '</p>'; }
-      if (A.year === A.max.getFullYear() && (!A.filtered || (allDays() && A.R.to >= day0(A.all.max)))) out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission (' + gbp(A.fc.soFar) + ' paid and pending in the first ' + A.fc.days + ' day' + (A.fc.days === 1 ? '' : 's') + ' of ' + A.fc.month + ', about ' + gbp(A.fc.perDay) + ' a day, multiplied by ' + A.fc.dim + ' days).</p>';
+      if (A.year === A.now.getFullYear() && (!A.filtered || A.fcOk)) out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission (' + gbp(A.fc.soFar) + ' paid and pending in the first ' + A.fc.days + ' day' + (A.fc.days === 1 ? '' : 's') + ' of ' + A.fc.month + ', about ' + gbp(A.fc.perDay) + ' a day, multiplied by ' + A.fc.dim + ' days).</p>';
       var owedMonths = A.months.filter(function (x) { return x.owed > 0.5; });
       if (owedMonths.length) out += '<p class="sub">Still pending: ' + owedMonths.map(function (x) { return MONTHS[x.d.getMonth()] + ' ' + gbp(x.owed); }).join(', ') + '.</p>';
       var empty = A.months.filter(function (x) { return !x.n && !x.future; }).length;
-      if (empty) out += '<p class="sub">' + empty + ' month' + (empty === 1 ? ' has' : 's have') + ' no data yet. <a href="#upload">Add older exports</a> to fill in your year.</p>';
+      if (empty && !A.filtered) out += '<p class="sub">' + empty + ' month' + (empty === 1 ? ' has' : 's have') + ' no data yet. <a href="#upload">Add older exports</a> to fill in your year.</p>';
       out += '</div>';
       out += bestsCard(A.all || A, 300);
       var after = '';
@@ -644,7 +655,7 @@
         A.weeks.map(function (w, i) { return '<button data-action="week" data-i="' + i + '" data-title="' + esc('Week of ' + wlab(w)) + '" data-l1="' + esc(gbp(w.paid) + ' paid') + '" data-l2="' + esc(gbp(w.owed) + ' pending') + '" aria-label="' + esc('Week of ' + wlab(w) + ': ' + gbp(w.paid) + ' paid, ' + gbp(w.owed) + ' pending') + '"><span class="stack a-bar' + (i === ws ? ' on' : '') + '" style="animation-delay:' + (350 + i * 50) + 'ms"><span class="s-owed" style="height:' + (w.owed / top * PH) + 'px"></span><span class="s-paid" style="height:' + (w.paid / top * PH) + 'px"></span></span></button>'; }).join('') +
         '</div></div><div class="ticks" style="padding-right:44px">' + A.weeks.map(function (w, i) { return '<span>' + (i % 3 === 0 || i === A.weeks.length - 1 ? wlab(w).replace(' ', '<br>') : '') + '</span>'; }).join('') + '</div>' +
         '<div class="alert t" id="wDetail" style="margin-top:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><b data-t>Week of ' + wlab(wk) + '</b><span style="text-align:right"><span data-l1>' + gbp(wk.paid) + ' paid</span><br><span data-l2>' + gbp(wk.owed) + ' pending</span></span></div>' +
-        '<p class="sub" style="margin-top:12px">You average ' + gbp(A.perDay) + ' of commission a day, paid and pending.</p></div>';
+        '<p class="sub" style="margin-top:12px">You average ' + gbp(A.perDay) + ' of commission a day, paid and pending' + (allDays() || !A.filtered ? '' : ', on the days you\'ve ticked') + '.</p></div>';
       var all = data_all(); var have = {};
       all.forEach(function (f) { var c = new Date(f.min.getFullYear(), f.min.getMonth(), 1); while (c <= f.max) { have[c.getFullYear() * 12 + c.getMonth()] = 1; c = new Date(c.getFullYear(), c.getMonth() + 1, 1); } });
       var latest = { min: A.min, max: A.max }; var lk = latest.min.getFullYear() * 12 + latest.min.getMonth(), hk = latest.max.getFullYear() * 12 + latest.max.getMonth();
@@ -695,7 +706,7 @@
     (A.doubleDown || []).filter(function (x) { return safe(x.shop, x.p); }).slice(0, 2).forEach(function (x) {
       if (x.per >= 5) add(x.per * 2, 'video', 'Make another video for ' + shortName(x.p), x.vids === 1 ? 'You\'ve only made one video about it, and it earned ' + gbp(x.per) + '. A follow-up is your easiest win.' : 'You\'ve only made ' + x.vids + ' videos about it, and they earned ' + gbp(x.per) + ' each. A follow-up is your easiest win.');
     });
-    var old = (A.content || []).filter(function (c) { return c.posted && (A.max - c.posted) / DAY > 45 && (c.recent || 0) >= 10 && !/live/i.test(c.type); }).sort(function (a, b) { return b.recent - a.recent; })[0];
+    var old = (A.content || []).filter(function (c) { return c.posted && (A.now - c.posted) / DAY > 45 && (c.recent || 0) >= 10 && !/live/i.test(c.type); }).sort(function (a, b) { return b.recent - a.recent; })[0];
     if (old) add(old.recent * 1.5, 'repeat', 'Your old video is still selling', 'A video from ' + fmtD(old.posted) + ' about ' + shortName(old.top) + ' earned ' + gbp(old.recent) + ' in the last 30 days. Try a part 2 or a fresh take on it.');
     if (A.bestPost && A.bestPost.n >= 3) add(A.bestPost.avg, 'clock', 'Post on ' + day[A.bestPost.i] + ' ' + BANDS[A.bestPost.j], 'Your videos posted then average ' + gbp(A.bestPost.avg) + ' each, from ' + A.bestPost.n + ' videos. A pattern worth testing, not a promise.');
     if (A.nLiveOrders >= 10 && A.livePer > A.vidPer * 1.3) add((A.livePer - A.vidPer) * 20, 'live', 'Go Live more often', 'A Live order earns you ' + gbp2(A.livePer) + ' on average, against ' + gbp2(A.vidPer) + ' from videos. Your buyers are busiest on ' + DAYS[A.buyBest[0]] + ' ' + BANDS[A.buyBest[1]] + '.');
@@ -930,7 +941,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 10:25</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 10:38</p>';
     navs(r === 'reveal' ? 'home' : r);
     var fc = document.querySelector('.fchip[aria-pressed="true"]'); if (fc) fc.parentNode.scrollLeft = Math.max(0, fc.offsetLeft - fc.parentNode.offsetLeft - 8);
     bindDrop();
@@ -1261,7 +1272,7 @@
       if (a === 'fpreset') { F.p = b.dataset.v; if (F.p === 'custom' && !F.from) { var A0 = data(); F.to = iso(day0(A0.max)); F.from = iso(addD(day0(A0.max), -29)); } }
       else if (a === 'fday') { var i = +b.dataset.i; F.days[i] = F.days[i] ? 0 : 1; if (!F.days.some(function (x) { return x; })) F.days = [1, 1, 1, 1, 1, 1, 1]; }
       else { F = { p: 'all', from: '', to: '', days: [1, 1, 1, 1, 1, 1, 1] }; }
-      S.sel = null; S.year = null; saveF(); render(true);
+      S.sel = null; S.year = null; S.wsel = null; saveF(); render(true);
     }
     else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(true); }
     else if (a === 'unlock' && !S.user && !(S.ready && S.ready.signin)) toast('Pro is coming very soon. Watch this space!');
@@ -1291,7 +1302,7 @@
   });
   document.addEventListener('change', function (e) {
     var k = e.target && e.target.dataset && e.target.dataset.f; if (!k || !e.target.value) return;
-    F[k] = e.target.value; F.p = 'custom'; S.sel = null; S.year = null; saveF(); render(true);
+    F[k] = e.target.value; F.p = 'custom'; S.sel = null; S.year = null; S.wsel = null; saveF(); render(true);
   });
   $('#fileInput').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
   $('#acctBtn').addEventListener('click', function () { openSheet(S.user ? 'account' : 'signin'); });

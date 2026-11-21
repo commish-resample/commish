@@ -386,3 +386,4 @@ html,body{overflow-x:clip}
 .delta.down{background:var(--pop);color:var(--ink)}
 @media (min-width:900px){.delta{font-size:14px}}
 @media (max-width:420px){.fdays{gap:4px}.fdays button{font-size:13px;border-radius:12px}}
+@media print{.fbar,.fnote,.topnav,.bottomnav{display:none!important}}
