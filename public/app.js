@@ -1080,11 +1080,11 @@
       var cut = function (txt, maxW) { var v = String(txt); if (ctx.measureText(v).width <= maxW) return v; while (v.length > 2 && ctx.measureText(v + '…').width > maxW) v = v.slice(0, -1); return v.replace(/\s+$/, '') + '…'; };
       ctx.fillStyle = YC.ink; yFont(ctx, 800, 76); ctx.fillText('My ' + Y.yr + ' in sales', YX - 4, 480);
       // hero tile
-      pop(0, YX + 415, 620, function () {
-        ctx.fillStyle = YC.ink; yRound(ctx, YX, 515, YMAXW, 215, 50); ctx.fill();
-        ctx.fillStyle = YC.yellow; yFont(ctx, 700, 40); ctx.globalAlpha = 0.85; ctx.fillText(hide ? 'Items sold' : 'Commission earned', YX + 48, 580); ctx.globalAlpha = 1;
-        var hv = hide ? num(Y.items) : gbp(Y.earned); yFit(ctx, hv, 800, 140, YMAXW - 96, 60); ctx.fillText(hv, YX + 42, 696);
-        ctx.fillStyle = YC.pink; ctx.beginPath(); ctx.arc(YX + YMAXW - 70, 578, 26, 0, Math.PI * 2); ctx.fill();
+      pop(0, YX + 415, 612, function () {
+        ctx.fillStyle = YC.ink; yRound(ctx, YX, 512, YMAXW, 200, 50); ctx.fill();
+        ctx.fillStyle = YC.yellow; yFont(ctx, 700, 40); ctx.globalAlpha = 0.85; ctx.fillText(hide ? 'Items sold' : 'Commission earned', YX + 48, 572); ctx.globalAlpha = 1;
+        var hv = hide ? num(Y.items) : gbp(Y.earned); yFit(ctx, hv, 800, 132, YMAXW - 96, 60); ctx.fillText(hv, YX + 42, 680);
+        ctx.fillStyle = YC.pink; ctx.beginPath(); ctx.arc(YX + YMAXW - 70, 570, 26, 0, Math.PI * 2); ctx.fill();
       });
       // three bubbles
       var bub = [
@@ -1093,23 +1093,23 @@
         Y.streak ? [String(Y.streak.n), 'day streak', YC.white, YC.ink] : [num(Y.saleDays), 'days selling', YC.white, YC.ink]
       ];
       bub.forEach(function (b, k) {
-        var cx = YX + 130 + k * 285, cy = 885 + (k === 1 ? 22 : 0), r = 128;
+        var cx = YX + 130 + k * 285, cy = 858 + (k === 1 ? 18 : 0), r = 120;
         pop(1 + k, cx, cy, function () {
           ctx.fillStyle = b[2]; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
           if (b[2] === YC.white) { ctx.strokeStyle = YC.ink; ctx.lineWidth = 6; ctx.stroke(); }
           ctx.fillStyle = b[3]; ctx.textAlign = 'center';
-          yFit(ctx, b[0], 800, 84, 210, 40); ctx.fillText(b[0], cx, cy + 14);
-          yFont(ctx, 700, 32); ctx.fillText(b[1], cx, cy + 62); ctx.textAlign = 'left';
+          yFit(ctx, b[0], 800, 80, 200, 40); ctx.fillText(b[0], cx, cy + 12);
+          yFont(ctx, 700, 30); ctx.fillText(b[1], cx, cy + 58); ctx.textAlign = 'left';
         });
       });
       // two tiles
-      var ty0 = 1058, th = 205, tw = (YMAXW - 20) / 2;
+      var ty0 = 1018, th = 252, tw = (YMAXW - 20) / 2;
       pop(4, YX + tw / 2, ty0 + th / 2, function () {
         ctx.fillStyle = YC.white; yRound(ctx, YX, ty0, tw, th, 40); ctx.fill(); ctx.strokeStyle = YC.ink; ctx.lineWidth = 6; ctx.stroke();
         ctx.fillStyle = YC.ink; yFont(ctx, 700, 34); ctx.fillText('Best month', YX + 34, ty0 + 56);
-        var mn = MONTHS[Y.bestMonth.d.getMonth()]; yFit(ctx, mn, 800, 76, tw - 68, 40); ctx.fillText(mn, YX + 32, ty0 + 132);
+        var mn = MONTHS[Y.bestMonth.d.getMonth()]; yFit(ctx, mn, 800, 76, tw - 68, 40); ctx.fillText(mn, YX + 32, ty0 + 134);
         var top = Math.max.apply(null, Y.months.map(function (m) { return m.v; })) || 1, bw = (tw - 68 - 11 * 5) / 12;
-        Y.months.forEach(function (m, k) { var h = Math.max(4, m.v / top * 46); ctx.fillStyle = m === Y.bestMonth ? YC.pink : YC.indigo; ctx.globalAlpha = m.n || m === Y.bestMonth ? 1 : 0.2; yRound(ctx, YX + 34 + k * (bw + 5), ty0 + th - 22 - h, bw, h, 4); ctx.fill(); ctx.globalAlpha = 1; });
+        Y.months.forEach(function (m, k) { var h = Math.max(4, m.v / top * 54); ctx.fillStyle = m === Y.bestMonth ? YC.pink : YC.indigo; ctx.globalAlpha = m.n || m === Y.bestMonth ? 1 : 0.2; yRound(ctx, YX + 34 + k * (bw + 5), ty0 + th - 22 - h, bw, h, 4); ctx.fill(); ctx.globalAlpha = 1; });
       });
       pop(5, YX + tw + 20 + tw / 2, ty0 + th / 2, function () {
         var x0 = YX + tw + 20;
@@ -1118,7 +1118,7 @@
         ctx.fillStyle = YC.pink; yFont(ctx, 800, 54); var L = yWrap(ctx, Y.persona[0], tw - 68);
         if (L.length > 2) L = L.slice(0, 2);
         var sz = 54; while (sz > 34 && L.some(function (l) { return ctx.measureText(l).width > tw - 68; })) { sz -= 4; yFont(ctx, 800, sz); }
-        L.forEach(function (l, j) { ctx.fillText(l, x0 + 34, ty0 + (L.length === 1 ? 142 : 118) + j * 58); });
+        L.forEach(function (l, j) { ctx.fillText(l, x0 + 34, ty0 + (L.length === 1 ? 160 : 132) + j * 60); });
       });
       // pills
       var pill = function (k, y, lab, val) {
@@ -1128,8 +1128,8 @@
           yFont(ctx, 800, 34); ctx.fillText(cut(val, YMAXW - 64 - lw - 14), YX + 32 + lw + 14, y + 44);
         });
       };
-      if (Y.topShop) pill(0, 1285, 'Top shop', Y.topShop.name);
-      if (Y.topProduct) pill(1, 1365, 'Top seller', shortName(Y.topProduct.name));
+      if (Y.topShop) pill(0, 1292, 'Top shop', Y.topShop.name);
+      if (Y.topProduct) pill(1, 1368, 'Top seller', shortName(Y.topProduct.name));
     }
     ctx.restore();
   }
@@ -1317,7 +1317,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 11:38</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 11:42</p>';
     navs(r === 'reveal' ? 'home' : r);
     var fc = document.querySelector('.fchip[aria-pressed="true"]'); if (fc) fc.parentNode.scrollLeft = Math.max(0, fc.offsetLeft - fc.parentNode.offsetLeft - 8);
     bindDrop();

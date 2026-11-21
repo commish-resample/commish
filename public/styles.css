@@ -423,3 +423,6 @@ html,body{overflow-x:clip}
 .st-foot .st-share{background:#FFE45C;background-image:none;color:#1B1340;border:0;box-shadow:none}
 .st-stage{touch-action:none}#story{overscroll-behavior:contain}
 .st-row{display:flex;gap:8px}.st-foot .st-row .btn{flex:1 1 0;width:auto;min-width:0;padding:0 12px;white-space:nowrap}.st-foot .btn[disabled]{opacity:.7}
+.fchips{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:8px;overflow:visible;margin:10px 0 0;padding:0}
+.fchip{width:100%;padding:0 4px;font-size:14px}
+@media (min-width:600px){.fchips{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}.fchip{font-size:15px}}
