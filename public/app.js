@@ -1044,28 +1044,65 @@
       ctx.fillStyle = ac; var py = yLines(ctx, Y.persona[0], YX - 6, 790, 800, 170, YMAXW, 165, 2);
       sub(Y.persona[1], py + 10, 4);
     } else if (i === 8) {
-      // receipt
-      var rx = YX, ry = 430, rw = YMAXW, rh = 1000;
-      ctx.fillStyle = YC.white; yRound(ctx, rx, ry, rw, rh, 36); ctx.fill();
-      ctx.strokeStyle = YC.ink; ctx.lineWidth = 6; ctx.stroke();
-      ctx.fillStyle = YC.ink; yFont(ctx, 800, 64); ctx.fillText('Your ' + Y.yr + ' in sales', rx + 50, ry + 100);
-      var rowsR = [];
-      if (!hide) rowsR.push(['Commission', gbp(Y.earned)]);
-      rowsR.push(['Orders', num(Y.orders)], ['Items sold', num(Y.items)], ['Best month', MONTHS[Y.bestMonth.d.getMonth()]]);
-      if (Y.topShop) rowsR.push(['Top shop', Y.topShop.name]);
-      if (Y.topProduct) rowsR.push(['Top seller', shortName(Y.topProduct.name)]);
-      rowsR.push([Y.streak ? 'Longest streak' : 'Days with a sale', Y.streak ? Y.streak.n + ' days' : num(Y.saleDays)], ['Seller type', Y.persona[0]]);
-      var yy = ry + 170;
-      ctx.setLineDash([10, 12]); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(rx + 50, yy - 40); ctx.lineTo(rx + rw - 50, yy - 40); ctx.stroke(); ctx.setLineDash([]);
-      rowsR.forEach(function (r, k) {
-        var rowY = yy + k * 74 + 20; if (k * 0.08 > t * 1.2) return;
-        ctx.fillStyle = YC.ink; yFont(ctx, 600, 38); ctx.fillText(r[0], rx + 50, rowY);
-        ctx.textAlign = 'right'; var vs = yFit(ctx, r[1], 800, 40, rw - 420, 32); var v = r[1]; while (ctx.measureText(v).width > rw - 420 && v.length > 3) v = v.slice(0, -2).replace(/…$/, '') + '…';
-        ctx.fillText(v, rx + rw - 50, rowY); ctx.textAlign = 'left';
+      // summary: bubbles and tiles, made to be screenshotted
+      var pop = function (k, cx, cy, draw) {
+        var sc = reduceMotion ? 1 : Math.max(0, Math.min(1, (t * 1.8 - k * 0.12)));
+        sc = sc < 1 ? 1 - Math.pow(1 - sc, 3) * 1 + Math.sin(sc * Math.PI) * 0.06 : 1;
+        if (sc <= 0) return; ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-cx, -cy); draw(); ctx.restore();
+      };
+      var cut = function (txt, maxW) { var v = String(txt); if (ctx.measureText(v).width <= maxW) return v; while (v.length > 2 && ctx.measureText(v + '…').width > maxW) v = v.slice(0, -1); return v.replace(/\s+$/, '') + '…'; };
+      ctx.fillStyle = YC.ink; yFont(ctx, 800, 76); ctx.fillText('My ' + Y.yr + ' in sales', YX - 4, 480);
+      // hero tile
+      pop(0, YX + 415, 620, function () {
+        ctx.fillStyle = YC.ink; yRound(ctx, YX, 515, YMAXW, 215, 50); ctx.fill();
+        ctx.fillStyle = YC.yellow; yFont(ctx, 700, 40); ctx.globalAlpha = 0.85; ctx.fillText(hide ? 'Items sold' : 'Commission earned', YX + 48, 580); ctx.globalAlpha = 1;
+        var hv = hide ? num(Y.items) : gbp(Y.earned); yFit(ctx, hv, 800, 140, YMAXW - 96, 60); ctx.fillText(hv, YX + 42, 696);
+        ctx.fillStyle = YC.pink; ctx.beginPath(); ctx.arc(YX + YMAXW - 70, 578, 26, 0, Math.PI * 2); ctx.fill();
       });
-      var by = yy + rowsR.length * 74 + 30;
-      ctx.setLineDash([10, 12]); ctx.beginPath(); ctx.moveTo(rx + 50, by - 30); ctx.lineTo(rx + rw - 50, by - 30); ctx.stroke(); ctx.setLineDash([]);
-      yBars(ctx, Y, rx + 50, by, rw - 100, Math.max(80, ry + rh - by - 80), YC.indigo, YC.pink, t, true);
+      // three bubbles
+      var bub = [
+        [num(Y.orders), 'orders', YC.pink, YC.ink],
+        hide ? [num(Y.shops), 'shops', YC.lilac, YC.ink] : [num(Y.items), 'items sold', YC.lilac, YC.ink],
+        Y.streak ? [String(Y.streak.n), 'day streak', YC.white, YC.ink] : [num(Y.saleDays), 'days selling', YC.white, YC.ink]
+      ];
+      bub.forEach(function (b, k) {
+        var cx = YX + 130 + k * 285, cy = 885 + (k === 1 ? 22 : 0), r = 128;
+        pop(1 + k, cx, cy, function () {
+          ctx.fillStyle = b[2]; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+          if (b[2] === YC.white) { ctx.strokeStyle = YC.ink; ctx.lineWidth = 6; ctx.stroke(); }
+          ctx.fillStyle = b[3]; ctx.textAlign = 'center';
+          yFit(ctx, b[0], 800, 84, 210, 40); ctx.fillText(b[0], cx, cy + 14);
+          yFont(ctx, 700, 32); ctx.fillText(b[1], cx, cy + 62); ctx.textAlign = 'left';
+        });
+      });
+      // two tiles
+      var ty0 = 1058, th = 205, tw = (YMAXW - 20) / 2;
+      pop(4, YX + tw / 2, ty0 + th / 2, function () {
+        ctx.fillStyle = YC.white; yRound(ctx, YX, ty0, tw, th, 40); ctx.fill(); ctx.strokeStyle = YC.ink; ctx.lineWidth = 6; ctx.stroke();
+        ctx.fillStyle = YC.ink; yFont(ctx, 700, 34); ctx.fillText('Best month', YX + 34, ty0 + 56);
+        var mn = MONTHS[Y.bestMonth.d.getMonth()]; yFit(ctx, mn, 800, 76, tw - 68, 40); ctx.fillText(mn, YX + 32, ty0 + 132);
+        var top = Math.max.apply(null, Y.months.map(function (m) { return m.v; })) || 1, bw = (tw - 68 - 11 * 5) / 12;
+        Y.months.forEach(function (m, k) { var h = Math.max(4, m.v / top * 46); ctx.fillStyle = m === Y.bestMonth ? YC.pink : YC.indigo; ctx.globalAlpha = m.n || m === Y.bestMonth ? 1 : 0.2; yRound(ctx, YX + 34 + k * (bw + 5), ty0 + th - 22 - h, bw, h, 4); ctx.fill(); ctx.globalAlpha = 1; });
+      });
+      pop(5, YX + tw + 20 + tw / 2, ty0 + th / 2, function () {
+        var x0 = YX + tw + 20;
+        ctx.fillStyle = YC.ink; yRound(ctx, x0, ty0, tw, th, 40); ctx.fill();
+        ctx.fillStyle = YC.yellow; yFont(ctx, 700, 34); ctx.fillText('Seller type', x0 + 34, ty0 + 56);
+        ctx.fillStyle = YC.pink; yFont(ctx, 800, 54); var L = yWrap(ctx, Y.persona[0], tw - 68);
+        if (L.length > 2) L = L.slice(0, 2);
+        var sz = 54; while (sz > 34 && L.some(function (l) { return ctx.measureText(l).width > tw - 68; })) { sz -= 4; yFont(ctx, 800, sz); }
+        L.forEach(function (l, j) { ctx.fillText(l, x0 + 34, ty0 + (L.length === 1 ? 142 : 118) + j * 58); });
+      });
+      // pills
+      var pill = function (k, y, lab, val) {
+        pop(6 + k, YX + YMAXW / 2, y + 34, function () {
+          ctx.fillStyle = YC.white; yRound(ctx, YX, y, YMAXW, 64, 32); ctx.fill(); ctx.strokeStyle = YC.ink; ctx.lineWidth = 5; ctx.stroke();
+          ctx.fillStyle = YC.ink; yFont(ctx, 600, 34); ctx.fillText(lab, YX + 32, y + 44); var lw = ctx.measureText(lab).width;
+          yFont(ctx, 800, 34); ctx.fillText(cut(val, YMAXW - 64 - lw - 14), YX + 32 + lw + 14, y + 44);
+        });
+      };
+      if (Y.topShop) pill(0, 1285, 'Top shop', Y.topShop.name);
+      if (Y.topProduct) pill(1, 1365, 'Top seller', shortName(Y.topProduct.name));
     }
     ctx.restore();
   }
@@ -1085,6 +1122,13 @@
       '<div class="st-foot"></div>';
     document.body.appendChild(host); document.documentElement.classList.add('story-open');
     host.addEventListener('click', storyClick);
+    var stage = host.querySelector('.st-stage'), sx = 0, sy = 0, st0 = 0;
+    stage.addEventListener('touchstart', function (e) { var p = e.touches[0]; sx = p.clientX; sy = p.clientY; st0 = Date.now(); }, { passive: true });
+    stage.addEventListener('touchend', function (e) {
+      if (!ST) return; var p = e.changedTouches[0], dx = p.clientX - sx, dy = p.clientY - sy;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) { ST.swiped = Date.now(); if (dx < 0) { if (ST.i < ST.list.length - 1) storyShow(ST.i + 1); } else storyShow(ST.i - 1); }
+      else if (dy > 110 && Math.abs(dy) > Math.abs(dx) * 1.5 && Date.now() - st0 < 800) { ST.swiped = Date.now(); closeStory(); }
+    }, { passive: true });
     document.addEventListener('keydown', storyKey);
     window.addEventListener('resize', storySize);
     storySize(); storyShow(0);
@@ -1100,17 +1144,17 @@
     var st = $('#story .st-stage'), c = $('#story canvas'); if (!st || !c) return;
     var w = st.clientWidth, h = st.clientHeight, cw = Math.min(w, h * 9 / 16); c.style.width = Math.floor(cw) + 'px'; c.style.height = Math.floor(cw * 16 / 9) + 'px';
   }
-  var YALT = ['The start of your year in sales', 'Your total for the year', 'Your best month', 'Your biggest day', 'Your top seller', 'Your number one shop', 'Your selling streak', 'Your seller type', 'Your year on one receipt'];
+  var YALT = ['The start of your year in sales', 'Your total for the year', 'Your best month', 'Your biggest day', 'Your top seller', 'Your number one shop', 'Your selling streak', 'Your seller type', 'Your year at a glance'];
   function storyShow(k) {
     if (!ST) return; ST.i = Math.max(0, Math.min(ST.list.length - 1, k));
     var card = ST.list[ST.i], c = $('#story canvas'), ctx = c.getContext('2d');
     c.setAttribute('aria-label', YALT[card]);
     $('#story').querySelectorAll('.st-prog i').forEach(function (x, j) { x.className = j < ST.i ? 'done' : j === ST.i ? 'on' : ''; });
     var last = ST.i === ST.list.length - 1, pro = S.plan === 'pro';
-    var foot = '<button class="btn st-share" data-st="share">' + (last ? 'Share my receipt' : 'Share this card') + '</button>';
+    var foot = '<button class="btn st-share" data-st="share">' + (last ? 'Share my year' : 'Share this card') + '</button>';
     if (last) foot += pro ? '<button class="btn ghost" data-st="close">Back to my dashboard</button>' : '<button class="btn pinky" data-st="pro">Want this every month? Go Pro, £2.99</button>';
     if (ST.i === 0 && ST.Y.gap) foot = '<p class="st-note">Your exports start in ' + MONTHS[ST.Y.firstMonth.getMonth()] + '. <button class="linkish" data-st="add">Add older exports</button> to fill in your whole year.</p>' + foot;
-    if (ST.i === 0) foot += '<p class="st-hint">Tap the right side to go forward</p>';
+    if (ST.i === 0) foot += '<p class="st-hint">Tap or swipe to go through your year</p>';
     $('#story .st-foot').innerHTML = foot;
     storySize();
     cancelAnimationFrame(ST.raf);
@@ -1126,6 +1170,7 @@
   function storyClick(e) {
     var b = e.target.closest('[data-st]'); if (!b || !ST) return;
     var a = b.dataset.st;
+    if ((a === 'next' || a === 'prev') && ST.swiped && Date.now() - ST.swiped < 350) return;
     if (a === 'close') closeStory();
     else if (a === 'next') { if (ST.i < ST.list.length - 1) storyShow(ST.i + 1); }
     else if (a === 'prev') storyShow(ST.i - 1);
@@ -1143,7 +1188,7 @@
   function storyShare(btn) {
     var card = ST.list[ST.i], c = document.createElement('canvas'); c.width = YW; c.height = YH;
     yDraw(c.getContext('2d'), card, ST.Y, ST.hide, 1);
-    var name = 'commish-' + ST.Y.yr + '-' + (card === 8 ? 'receipt' : 'card-' + (ST.i + 1)) + '.png';
+    var name = 'commish-' + ST.Y.yr + '-' + (card === 8 ? 'my-year' : 'card-' + (ST.i + 1)) + '.png';
     c.toBlob(function (blob) {
       if (!blob) { toast('Sorry, that image could not be made.'); return; }
       var file = null; try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
@@ -1214,7 +1259,7 @@
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 10:58</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 11:15</p>';
     navs(r === 'reveal' ? 'home' : r);
     var fc = document.querySelector('.fchip[aria-pressed="true"]'); if (fc) fc.parentNode.scrollLeft = Math.max(0, fc.offsetLeft - fc.parentNode.offsetLeft - 8);
     bindDrop();

@@ -421,3 +421,4 @@ html,body{overflow-x:clip}
 .st-hint{margin:0;font-size:13px;text-align:center;opacity:.7}
 @media print{#story{display:none}}
 .st-foot .st-share{background:#FFE45C;background-image:none;color:#1B1340;border:0;box-shadow:none}
+.st-stage{touch-action:none}#story{overscroll-behavior:contain}
