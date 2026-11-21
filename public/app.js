@@ -395,6 +395,76 @@
     var A = analyse(rows); A.dupes = m.dupes; A.files = g; A.allFiles = g; A.hiddenRows = hidden; A.winStart = winStart; return A;
   }
 
+  // ---------- date filter (Pro) ----------
+  var F = { p: 'all', from: '', to: '', days: [1, 1, 1, 1, 1, 1, 1] };
+  try { var fs = JSON.parse(localStorage.getItem('commish-filter') || 'null'); if (fs && fs.p) { F.p = fs.p; F.from = fs.from || ''; F.to = fs.to || ''; if (fs.days && fs.days.length === 7) F.days = fs.days; } } catch (e) {}
+  function saveF() { try { localStorage.setItem('commish-filter', JSON.stringify(F)); } catch (e) {} }
+  var PRESETS = [['all', 'All dates'], ['tm', 'This month'], ['lm', 'Last month'], ['7', 'Last 7 days'], ['30', 'Last 30 days'], ['90', 'Last 90 days'], ['ty', 'This year'], ['custom', 'Custom']];
+  function day0(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+  function addD(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function parseIso(v) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+  function allDays() { return F.days.every(function (x) { return x; }); }
+  function fActive() { return F.p !== 'all' || !allDays(); }
+  // Range [from, to] as whole days, plus the period before it for comparison.
+  function fRange(A0) {
+    var t = day0(new Date()), y = t.getFullYear(), m = t.getMonth(), r;
+    if (F.p === 'tm') r = { from: new Date(y, m, 1), to: t, pf: new Date(y, m - 1, 1) };
+    else if (F.p === 'lm') r = { from: new Date(y, m - 1, 1), to: new Date(y, m, 0), pf: new Date(y, m - 2, 1), pt: new Date(y, m - 1, 0) };
+    else if (F.p === 'ty') r = { from: new Date(y, 0, 1), to: t, pf: new Date(y - 1, 0, 1) };
+    else if (F.p === '7' || F.p === '30' || F.p === '90') r = { from: addD(t, 1 - +F.p), to: t };
+    else if (F.p === 'custom') {
+      var a = parseIso(F.from) || day0(A0.min), b = parseIso(F.to) || day0(A0.max);
+      if (a > b) { var c = a; a = b; b = c; }
+      r = { from: a, to: b };
+    } else r = { from: day0(A0.min), to: day0(A0.max), none: true };
+    var len = Math.round((r.to - r.from) / DAY) + 1;
+    if (!r.pf) { r.pt = addD(r.from, -1); r.pf = addD(r.from, -len); }
+    else if (!r.pt) { var lim = F.p === 'tm' ? new Date(y, m, 0) : new Date(y - 1, 11, 31); r.pt = addD(r.pf, len - 1); if (r.pt > lim) r.pt = lim; }
+    return r;
+  }
+  function inRange(r, a, b) { var d = day0(r.odate); return d >= a && d <= b && F.days[(d.getDay() + 6) % 7]; }
+  function view() {
+    var A0 = data(); if (!A0) return null;
+    if (S.plan !== 'pro' || !fActive()) { A0.all = A0; return A0; }
+    var R = fRange(A0), rows = A0.rows.filter(function (r) { return inRange(r, R.from, R.to); });
+    var prevRows = R.none ? [] : A0.rows.filter(function (r) { return inRange(r, R.pf, R.pt); });
+    var A = rows.length ? analyse(rows) : { empty: true };
+    A.all = A0; A.R = R; A.filtered = true; A.dupes = A0.dupes; A.files = A0.files; A.allFiles = A0.allFiles; A.hiddenRows = 0; A.winStart = null;
+    if (prevRows.length && R.pf >= day0(A0.min)) {
+      var P = { earned: 0, gmv: 0, items: 0 };
+      prevRows.forEach(function (r) { P.earned += A0.earned(r); P.gmv += r.gmv; P.items += r.items; });
+      A.prev = P;
+    }
+    return A;
+  }
+  function fLabel(R) { return R.from.getTime() === R.to.getTime() ? fmtD(R.from) : range(R.from, R.to); }
+  function dayNote() { if (allDays()) return ''; var n = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].filter(function (x, i) { return F.days[i]; }); return n.length ? ', ' + n.join(', ') + ' only' : ''; }
+  function filterBar(A) {
+    var pro = S.plan === 'pro', A0 = A.all || A;
+    var chips = PRESETS.map(function (x) { return '<button class="fchip t" data-action="fpreset" data-v="' + x[0] + '" aria-pressed="' + (pro && F.p === x[0]) + '">' + x[1] + '</button>'; }).join('');
+    var out = '<div class="card fbar t a-in' + (pro ? '' : ' flock') + '" id="fbar"><div class="row-head"><h2 style="font-size:20px">Dates</h2>' +
+      (pro && fActive() ? '<button class="linkish" data-action="freset" style="min-height:36px">Reset</button>' : (!pro ? '<span class="tag pro-tag">Pro</span>' : '')) + '</div>' +
+      '<div class="fchips" role="group" aria-label="Date range">' + chips + '</div>';
+    if (pro && F.p === 'custom') {
+      var R = fRange(A0), lo = iso(day0(A0.min)), hi = iso(day0(A0.max));
+      out += '<div class="fdates"><label>From<input type="date" data-f="from" min="' + lo + '" max="' + hi + '" value="' + iso(R.from) + '"></label><label>To<input type="date" data-f="to" min="' + lo + '" max="' + hi + '" value="' + iso(R.to) + '"></label></div>';
+    }
+    out += '<div class="fdays" role="group" aria-label="Days of the week">' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (d, i) { return '<button class="t" data-action="fday" data-i="' + i + '" aria-pressed="' + (!pro || !!F.days[i]) + '" aria-label="' + DAYS[i] + '">' + d.slice(0, pro ? 3 : 1) + '</button>'; }).join('') + '</div>';
+    if (pro && A.filtered) out += '<p class="sub" style="margin-top:10px"><b>Showing ' + fLabel(A.R) + dayNote() + '.</b> Personal bests stay all-time and Tax stays on tax years.</p>';
+    if (!pro) out += '<div class="over"><button class="btn" data-action="unlock">Pick any dates with Pro</button></div>';
+    return out + '</div>';
+  }
+  function fChip(A) { return A.filtered ? '<p class="fnote t a-in">Showing ' + fLabel(A.R) + dayNote() + ' · <button class="linkish" data-action="freset">Reset</button></p>' : ''; }
+  function emptyCard() { return '<div class="card t a-in"><h2>No orders in these dates</h2><p class="sub">Your exports cover ' + '%RANGE%' + '. Pick a different range or tick more days.</p><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="btn" data-action="freset">Show all dates</button><a class="btn ghost" href="#upload">Add more exports</a></div></div>'; }
+  function delta(cur, prev) {
+    if (prev == null || prev <= 0) return '';
+    var pc = Math.round((cur - prev) / prev * 100);
+    if (Math.abs(pc) > 999) return '';
+    var up = pc >= 0;
+    return '<small class="delta ' + (pc === 0 ? 'flat' : up ? 'up' : 'down') + '" aria-label="' + (pc === 0 ? 'Same as' : Math.abs(pc) + '% ' + (up ? 'up on' : 'down on')) + ' the previous period">' + (pc === 0 ? '=' : (up ? '▲ ' : '▼ ') + Math.abs(pc) + '%') + '</small>';
+  }
+
   // ---------- view helpers ----------
   function count(v, fmt, delay) { return '<span data-count="' + v + '" data-fmt="' + (fmt || 'gbp') + '" data-delay="' + (delay || 0) + '">' + fmtVal(v, fmt) + '</span>'; }
   function fmtVal(v, fmt) { return fmt === 'pct' ? Math.round(v) + '%' : fmt === 'num' ? num(v) : gbp(v); }
@@ -537,13 +607,13 @@
         '<div class="alert t" id="mDetail" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;border:0"><span data-t style="font-size:18px;font-weight:800">' + MONTHS[m.d.getMonth()] + ' ' + m.d.getFullYear() + '</span><span style="text-align:right"><span data-l1>' + gbp(m.paid) + ' paid</span><br><span data-l2>' + gbp(m.owed) + ' pending, ' + gbp(m.lost) + ' lost</span></span></div>';
       var tr = yearTrend(A);
       if (tr) { var per = Math.round(Math.abs(tr.slope)); out += '<p class="sub" style="margin-top:12px"><b>Trend since ' + MONTHS[A.months[tr.i0].d.getMonth()] + ':</b> ' + (per < 10 ? 'roughly flat, about the same each month.' : (tr.slope > 0 ? 'up' : 'down') + ' about ' + gbp(per) + ' a month, paid and pending.') + '</p>'; }
-      if (A.year === A.max.getFullYear()) out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission (' + gbp(A.fc.soFar) + ' paid and pending in the first ' + A.fc.days + ' day' + (A.fc.days === 1 ? '' : 's') + ' of ' + A.fc.month + ', about ' + gbp(A.fc.perDay) + ' a day, multiplied by ' + A.fc.dim + ' days).</p>';
+      if (A.year === A.max.getFullYear() && (!A.filtered || (allDays() && A.R.to >= day0(A.all.max)))) out += '<p class="sub" style="margin-top:12px">This month you\'re on track for ' + gbp(A.forecast) + ' in commission (' + gbp(A.fc.soFar) + ' paid and pending in the first ' + A.fc.days + ' day' + (A.fc.days === 1 ? '' : 's') + ' of ' + A.fc.month + ', about ' + gbp(A.fc.perDay) + ' a day, multiplied by ' + A.fc.dim + ' days).</p>';
       var owedMonths = A.months.filter(function (x) { return x.owed > 0.5; });
       if (owedMonths.length) out += '<p class="sub">Still pending: ' + owedMonths.map(function (x) { return MONTHS[x.d.getMonth()] + ' ' + gbp(x.owed); }).join(', ') + '.</p>';
       var empty = A.months.filter(function (x) { return !x.n && !x.future; }).length;
       if (empty) out += '<p class="sub">' + empty + ' month' + (empty === 1 ? ' has' : 's have') + ' no data yet. <a href="#upload">Add older exports</a> to fill in your year.</p>';
       out += '</div>';
-      out += bestsCard(A, 300);
+      out += bestsCard(A.all || A, 300);
       var after = '';
       after += '<div class="grid2">';
       var b = A.buyBest;
@@ -606,10 +676,13 @@
   function data_all() { return goodFiles(); }
   function topLine(s) { return s.top ? '<p class="topline">Top seller: ' + esc(s.top) + '</p>' : ''; }
   function top3(A) {
+    var P = A.prev;
     return '<div class="top3">' +
-      '<div class="box ink t"><p>Commission paid</p><b>' + count(A.paid, 'gbp', 100) + '</b></div>' +
-      '<div class="box t"><p>GMV (sales you drove)</p><b>' + count(A.gmv, 'gbp', 160) + '</b></div>' +
-      '<div class="box t"><p>Items sold</p><b>' + count(A.items, 'num', 220) + '</b></div></div>';
+      (A.filtered ? '<div class="box ink t"><p>Commission earned</p><b>' + count(A.paid + A.owed, 'gbp', 100) + '</b>' + (P ? delta(A.paid + A.owed, P.earned) : '') + '</div>'
+        : '<div class="box ink t"><p>Commission paid</p><b>' + count(A.paid, 'gbp', 100) + '</b></div>') +
+      '<div class="box t"><p>GMV (sales you drove)</p><b>' + count(A.gmv, 'gbp', 160) + '</b>' + (P ? delta(A.gmv, P.gmv) : '') + '</div>' +
+      '<div class="box t"><p>Items sold</p><b>' + count(A.items, 'num', 220) + '</b>' + (P ? delta(A.items, P.items) : '') + '</div></div>' +
+      (P ? '<p class="sub small" style="margin-top:8px">Commission earned is paid plus pending. Arrows compare with the ' + (F.p === 'lm' ? 'month before' : F.p === 'tm' ? 'same days last month' : F.p === 'ty' ? 'same dates last year' : 'same number of days before') + '.</p>' : '');
   }
   function tilePending(A, dl) { return '<div class="tile pink t a-in" style="animation-delay:' + dl + 'ms"><p>Pending payment</p><b>' + count(A.owed, 'gbp', dl) + '</b><small>Most settle within about ' + A.lagMed + ' days</small></div>'; }
   function tileLost(A, dl) { return '<div class="tile t a-in" style="animation-delay:' + dl + 'ms"><p>Commission lost (returns/cancellations)</p><b>' + count(A.lost, 'gbp', dl) + '</b>' +
@@ -846,14 +919,20 @@
     if (r === 'upload') { html = viewUpload(); dashShown = false; }
     else if (r === 'admin') { html = '<div id="adminView"><section class="a-in"><h1>Owner dashboard</h1><p class="sub">Loading…</p></section></div>'; dashShown = false; }
     else {
-      var A = data();
+      var A = view();
       SECTIONS = S.plan === 'pro' ? ['home', 'shops', 'videos', 'tax'] : ['home', 'pro'];
-      var parts = S.plan === 'pro' ? { home: viewHome(A), shops: viewShops(A), videos: viewVideos(A), tax: viewTax(A) } : { home: viewHome(A), pro: viewPro(A) };
+      var parts;
+      if (S.plan === 'pro' && A.empty) {
+        var em = emptyCard().replace('%RANGE%', range(A.all.min, A.all.max));
+        parts = { home: filterBar(A) + em, shops: fChip(A) + em, videos: fChip(A) + em, tax: viewTax(A.all) };
+      } else if (S.plan === 'pro') parts = { home: filterBar(A) + viewHome(A), shops: fChip(A) + viewShops(A), videos: fChip(A) + viewVideos(A), tax: viewTax(A.all) };
+      else parts = { home: filterBar(A) + viewHome(A), pro: viewPro(A) };
       html = SECTIONS.map(function (k, i) { return '<section class="dsec' + (i && !quiet ? ' pending' : '') + '" id="sec-' + k + '" data-sec="' + k + '" aria-label="' + k + '">' + parts[k] + '</section>'; }).join('');
       dashShown = true;
     }
-    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 20 Nov, 18:14</p>';
+    $('#app').innerHTML = html + '<p class="foot">Commish is not affiliated with TikTok. Figures come straight from your export file.<br><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="mailto:hello@commish.fyi">hello@commish.fyi</a><br>Version 21 Nov, 10:25</p>';
     navs(r === 'reveal' ? 'home' : r);
+    var fc = document.querySelector('.fchip[aria-pressed="true"]'); if (fc) fc.parentNode.scrollLeft = Math.max(0, fc.offsetLeft - fc.parentNode.offsetLeft - 8);
     bindDrop();
     if (r === 'upload') { countUp(document, quiet); return; }
     if (r === 'admin') { loadAdmin(); return; }
@@ -1177,6 +1256,13 @@
     else if (a === 'sort') { S.shopSort = b.dataset.v; S.shopsShown = 7; render(true); }
     else if (a === 'shops-more') { S.shopsShown = (S.shopsShown || 7) + 20; render(true); }
     else if (a === 'shops-less') { S.shopsShown = 7; render(true); var sh = $('#sec-shops'); if (sh) sh.scrollIntoView({ block: 'start' }); }
+    else if (a === 'fpreset' || a === 'fday' || a === 'freset') {
+      if (S.plan !== 'pro') { b.blur(); var ub = $('#fbar [data-action="unlock"]'); if (ub) ub.click(); return; }
+      if (a === 'fpreset') { F.p = b.dataset.v; if (F.p === 'custom' && !F.from) { var A0 = data(); F.to = iso(day0(A0.max)); F.from = iso(addD(day0(A0.max), -29)); } }
+      else if (a === 'fday') { var i = +b.dataset.i; F.days[i] = F.days[i] ? 0 : 1; if (!F.days.some(function (x) { return x; })) F.days = [1, 1, 1, 1, 1, 1, 1]; }
+      else { F = { p: 'all', from: '', to: '', days: [1, 1, 1, 1, 1, 1, 1] }; }
+      S.sel = null; S.year = null; saveF(); render(true);
+    }
     else if (a === 'taxyear') { S.taxYear = +b.dataset.v; render(true); }
     else if (a === 'unlock' && !S.user && !(S.ready && S.ready.signin)) toast('Pro is coming very soon. Watch this space!');
     else if (a === 'unlock') openSheet(S.user ? (S.plan === 'pro' ? 'account' : 'upgrade') : 'signin', S.user ? null : 'unlock');
@@ -1192,7 +1278,7 @@
     else if (a === 'video') openVideo();
     else if (a === 'print') window.print();
     else if (a === 'copyids') {
-      var Ad = data(), c = Ad.challenge[+b.dataset.i];
+      var Ad = view(), c = Ad.challenge[+b.dataset.i];
       var lines = ['Affiliate orders marked Ineligible with no items refunded', 'Product: ' + c.product, 'Shop: ' + c.shop, 'Orders: ' + c.n + ', estimated commission ' + gbp2(c.est), '', 'Order ID, order date, items, estimated commission'];
       c.rows.slice().sort(function (x, y) { return x.odate - y.odate; }).forEach(function (r) { lines.push(r.oid + ', ' + fmtD(r.odate) + ', ' + r.items + ', ' + gbp2(r.est)); });
       if (navigator.clipboard) navigator.clipboard.writeText(lines.join('\n')).then(function () { toast('Copied ' + c.n + ' order IDs. Paste them into your message to TikTok Shop support.'); }, function () { toast('Copying was blocked by your browser.'); });
@@ -1202,6 +1288,10 @@
       var txt = 'TikTok Shop affiliate commission, tax year ' + T.y + '/' + String(T.y + 1).slice(2) + '\nCommission settled into my TikTok balance: ' + gbp2(T.paid) + '\nSettled orders: ' + T.n + '\nSource: TikTok affiliate orders export, totalled by Commish by settlement date (not withdrawal date).';
       if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { toast('Copied. Paste it into an email to your accountant.'); }, function () { toast('Copying was blocked by your browser.'); });
     }
+  });
+  document.addEventListener('change', function (e) {
+    var k = e.target && e.target.dataset && e.target.dataset.f; if (!k || !e.target.value) return;
+    F[k] = e.target.value; F.p = 'custom'; S.sel = null; S.year = null; saveF(); render(true);
   });
   $('#fileInput').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
   $('#acctBtn').addEventListener('click', function () { openSheet(S.user ? 'account' : 'signin'); });

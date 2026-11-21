@@ -363,3 +363,26 @@ html.quiet .pbbar i{animation:none}
 @media (max-width:760px){.pbgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.pb b{font-size:22px}}
 .alert svg{flex:0 0 auto}
 html,body{overflow-x:clip}
+/* date filter */
+.fbar{position:relative;padding-bottom:16px}
+.fchips{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;margin:8px -2px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.fchips::-webkit-scrollbar{display:none}
+.fchip{flex:0 0 auto;min-height:40px;padding:0 14px;border-radius:20px;border:2.5px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;font-weight:700;white-space:nowrap}
+.fchip[aria-pressed="true"]{background:var(--accent);color:var(--accentInk);border-color:var(--accent)}
+.fdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:8px;max-width:460px}
+.fdays button{min-height:40px;padding:0;border-radius:14px;border:2.5px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:700;text-decoration:line-through;opacity:.7}
+.fdays button[aria-pressed="true"]{background:var(--tint);color:var(--ink);text-decoration:none;opacity:1}
+.fdates{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.fdates label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700;flex:1 1 140px;max-width:220px}
+.fdates input{min-height:44px;border-radius:14px;border:2.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:16px;padding:0 10px}
+.fnote{margin:0 0 12px;font-size:15px;font-weight:700}
+.fnote .linkish{min-height:32px;font-size:15px}
+.fbar.flock .fchips,.fbar.flock .fdays{filter:blur(1.5px);opacity:.55;pointer-events:none}
+.fbar .over{position:absolute;inset:auto 0 14px 0;display:flex;justify-content:center;pointer-events:none}
+.fbar .over .btn{pointer-events:auto;min-height:48px}
+.pro-tag{background:var(--pop);border:2.5px solid var(--line);border-radius:14px;padding:3px 10px;font-size:13px;font-weight:800}
+.delta{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:800;background:var(--tint);color:var(--ink)}
+.box.ink .delta{background:rgba(255,255,255,.16);color:inherit}
+.delta.down{background:var(--pop);color:var(--ink)}
+@media (min-width:900px){.delta{font-size:14px}}
+@media (max-width:420px){.fdays{gap:4px}.fdays button{font-size:13px;border-radius:12px}}
